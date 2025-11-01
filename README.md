@@ -151,18 +151,24 @@ System.out.println("Parameters: " + analysis.getParameters()); // [cutoffDate]
 ### Delete Queries
 
 ```java
+// DELETE without alias
 String query = "DELETE FROM User WHERE age < 18";
 
 QueryAnalysis analysis = parser.analyze(query);
 System.out.println("Query Type: " + analysis.getQueryType()); // DELETE
+
+// DELETE with alias (for complex WHERE clauses)
+String query2 = "DELETE FROM Purchase p WHERE p.status = 'CANCELLED' AND p.createdDate < :cutoffDate";
+QueryAnalysis analysis2 = parser.analyze(query2);
+System.out.println("Fields: " + analysis2.getEntityFields()); // {Purchase=[status, createdDate]}
 ```
 
 ## Supported HQL/JPQL Features
 
 ### Query Types
 - SELECT statements with projection
-- UPDATE statements
-- DELETE statements
+- UPDATE statements (with/without alias)
+- DELETE statements (with/without alias)
 - INSERT ... SELECT statements
 
 ### Clauses
@@ -193,7 +199,7 @@ System.out.println("Query Type: " + analysis.getQueryType()); // DELETE
 - Other: COALESCE, NULLIF, CAST, SIZE
 
 ### Parameters
-- Named parameters: `:paramName`
+- Named parameters: `:paramName` (avoid using HQL keywords like `:end`, `:and` as parameter names)
 - Positional parameters: `?1`, `?2`, etc.
 
 ## API Documentation
@@ -273,6 +279,55 @@ mvn test
 # Create JAR
 mvn package
 ```
+
+## Current Limitations
+
+### Parser Limitations
+
+1. **Parameter Naming**: Avoid using HQL keywords (like `end`, `and`, `or`) as parameter names. Use descriptive names like `:endDate`, `:startDate` instead.
+
+2. **Subquery Limitations**: While subqueries are parsed, entity/field extraction from deeply nested subqueries may be incomplete.
+
+3. **Collection Join Analysis**: For implicit joins (e.g., `u.orders`), the parser infers entity names using simple heuristics (singularization + capitalization). This may not work for irregular plurals or custom naming.
+
+### Converter Limitations
+
+1. **Implicit Join ON Clauses**: HQL allows implicit joins without ON clauses (using JPA metadata). The converter cannot generate ON clauses automatically - you must provide explicit ON clauses for SQL compatibility.
+   ```java
+   // HQL (implicit ON clause based on metadata)
+   "FROM User u INNER JOIN u.orders o"
+   
+   // SQL requires explicit ON clause
+   "FROM users u INNER JOIN orders o ON o.user_id = u.id"
+   ```
+
+2. **Parameter Format**: The converter keeps HQL parameter format (`:param`, `?1`) rather than converting to PostgreSQL format (`$1`, `$2`). You'll need to handle parameter binding separately.
+
+3. **FETCH Joins**: FETCH joins are HQL-specific for eager loading. The converter ignores the FETCH keyword, converting them to regular joins.
+
+4. **Entity Metadata Requirements**: The converter requires explicit entity-to-table and field-to-column mappings. It does not introspect JPA annotations or Hibernate configuration.
+
+5. **Nested Paths**: Paths like `u.address.city` are parsed but may not convert correctly if intermediate relationships aren't mapped.
+
+6. **Collection Functions**: HQL-specific functions like `SIZE()`, `MEMBER OF` may not have direct PostgreSQL equivalents.
+
+### Field Extraction Behavior
+
+1. **UPDATE/DELETE Statements**: 
+   - With alias (e.g., `UPDATE User u SET u.active = false`): Fields referenced with alias are extracted
+   - Without alias (e.g., `UPDATE User SET active = false`): Unqualified fields are extracted and mapped in conversion
+
+2. **Unqualified Fields**: In UPDATE/DELETE statements without aliases, unqualified field names are mapped to columns using registered field mappings. This is the expected behavior but differs from SELECT queries where fields are typically qualified with aliases.
+
+### Grammar Coverage
+
+While the parser supports most common HQL/JPQL features, some advanced features are not yet implemented:
+- `TREAT()` operator for polymorphic queries
+- `INDEX()` function for indexed collections
+- `KEY()` and `VALUE()` functions for map collections
+- `TYPE()` operator for inheritance queries
+- Constructor expressions (e.g., `SELECT NEW dto.UserDTO(u.name, u.email)`)
+- Bulk INSERT with VALUES clause (only INSERT ... SELECT supported)
 
 ## Grammar
 
