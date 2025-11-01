@@ -11,10 +11,10 @@ import com.raditha.hql.converter.ConversionException;
  */
 public class UsageExamples {
     
-    public static void main(String[] args) {
+    public static void main(String[] args) throws ConversionException, ParseException {
         example1_BasicParsing();
-        example2_QueryAnalysis();
-        example3_PostgreSQLConversion();
+//        example2_QueryAnalysis();
+//        example3_PostgreSQLConversion();
         example4_ComplexQuery();
     }
     
@@ -96,7 +96,7 @@ public class UsageExamples {
     /**
      * Example 4: Complex query with joins
      */
-    public static void example4_ComplexQuery() {
+    public static void example4_ComplexQuery() throws ConversionException, ParseException {
         System.out.println("=== Example 4: Complex Query Analysis ===");
         
         HQLParser parser = new HQLParser();
@@ -107,28 +107,23 @@ public class UsageExamples {
                       "WHERE u.active = true AND o.total > 100 " +
                       "ORDER BY o.total DESC";
         
-        try {
-            QueryAnalysis analysis = parser.analyze(query);
-            
-            System.out.println("Query: " + query);
-            System.out.println("\nAnalysis:");
-            System.out.println(analysis);
-            
-            // Convert to PostgreSQL
-            HQLToPostgreSQLConverter converter = new HQLToPostgreSQLConverter();
-            converter.registerEntityMapping("User", "users");
-            converter.registerEntityMapping("Order", "orders");
-            converter.registerFieldMapping("User", "name", "full_name");
-            converter.registerFieldMapping("User", "active", "is_active");
-            converter.registerFieldMapping("Order", "total", "total_amount");
-            
-            String sqlQuery = converter.convert(query);
-            System.out.println("\nPostgreSQL: " + sqlQuery);
-            
-        } catch (ParseException | ConversionException e) {
-            System.err.println("Error: " + e.getMessage());
-        }
-        
+        QueryAnalysis analysis = parser.analyze(query);
+
+        System.out.println("Query: " + query);
+        System.out.println("\nAnalysis:");
+        System.out.println(analysis);
+
+        // Convert to PostgreSQL
+        HQLToPostgreSQLConverter converter = new HQLToPostgreSQLConverter();
+        converter.registerEntityMapping("User", "users");
+        converter.registerEntityMapping("Order", "orders");
+        converter.registerFieldMapping("User", "name", "full_name");
+        converter.registerFieldMapping("User", "active", "is_active");
+        converter.registerFieldMapping("Order", "total", "total_amount");
+
+        String sqlQuery = converter.convert(query);
+        System.out.println("\nPostgreSQL: " + sqlQuery);
+
         System.out.println();
     }
     

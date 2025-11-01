@@ -213,40 +213,62 @@ public class HQLToPostgreSQLConverter {
             
             // Note: FETCH is ignored in SQL conversion
             
-            String joinPath = visit(ctx.path());
-            sql.append(" ").append(joinPath);
+            // In HQL, joins are like "u.orders o" where u is alias, orders is collection field
+            // In SQL, we need to convert this to the actual table name
+            String pathText = ctx.path().getText();
+            String parentAlias = null;
+            String fieldName = null;
+            String tableName = null;
+            String joinEntityName = null;
+            
+            if (pathText.contains(".")) {
+                String[] parts = pathText.split("\\.");
+                if (parts.length >= 2) {
+                    parentAlias = parts[0];
+                    fieldName = parts[parts.length - 1];
+                    
+                    // Use heuristic to determine entity name from collection field
+                    // e.g., "orders" → "Order", "users" → "User"
+                    joinEntityName = fieldName;
+                    if (joinEntityName.endsWith("s") && joinEntityName.length() > 1) {
+                        joinEntityName = joinEntityName.substring(0, joinEntityName.length() - 1);
+                    }
+                    joinEntityName = Character.toUpperCase(joinEntityName.charAt(0)) + joinEntityName.substring(1);
+                    
+                    // Get the table name for this entity
+                    if (entityToTableMap.containsKey(joinEntityName)) {
+                        tableName = entityToTableMap.get(joinEntityName);
+                    } else {
+                        // Fallback: lowercase the field name
+                        tableName = fieldName.toLowerCase();
+                    }
+                }
+            }
+            
+            // If we couldn't parse it, just use the path as-is (shouldn't happen normally)
+            if (tableName == null) {
+                tableName = pathText;
+            }
+            
+            sql.append(" ").append(tableName);
             
             if (ctx.identifier() != null) {
                 String joinAlias = ctx.identifier().getText();
                 sql.append(" ").append(joinAlias);
                 
-                // Try to determine the entity for this join
-                // The join path is typically "alias.field" where the field references a collection
-                // Use a heuristic: singularize the field name and capitalize it
-                // e.g., "orders" → "Order", "users" → "User"
-                String pathText = ctx.path().getText();
-                if (pathText.contains(".")) {
-                    String[] parts = pathText.split("\\.");
-                    if (parts.length >= 2) {
-                        String fieldName = parts[parts.length - 1];
-                        // Simple heuristic: remove 's' suffix and capitalize
-                        String entityName = fieldName;
-                        if (entityName.endsWith("s") && entityName.length() > 1) {
-                            entityName = entityName.substring(0, entityName.length() - 1);
-                        }
-                        entityName = Character.toUpperCase(entityName.charAt(0)) + entityName.substring(1);
-                        
-                        // Check if this entity is registered
-                        if (entityToTableMap.containsKey(entityName) || entityFieldToColumnMap.containsKey(entityName)) {
-                            aliasToEntity.put(joinAlias, entityName);
-                        }
-                    }
+                // Register the alias to entity mapping
+                if (joinEntityName != null && (entityToTableMap.containsKey(joinEntityName) || entityFieldToColumnMap.containsKey(joinEntityName))) {
+                    aliasToEntity.put(joinAlias, joinEntityName);
                 }
             }
             
             if (ctx.expression() != null) {
                 sql.append(" ON ").append(visit(ctx.expression()));
             }
+            // Note: HQL allows implicit joins without ON clause (uses JPA metadata)
+            // For SQL conversion, we'd need to generate the ON clause, but that requires
+            // knowing the foreign key relationships. For now, we leave it as-is.
+            // In practice, users should provide explicit ON clauses or this is a limitation.
             
             return sql.toString();
         }
