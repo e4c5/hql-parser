@@ -17,7 +17,7 @@ updateStatement
     ;
 
 deleteStatement
-    : DELETE FROM? entityName whereClause?
+    : DELETE FROM? entityName (AS? identifier)? whereClause?
     ;
 
 insertStatement

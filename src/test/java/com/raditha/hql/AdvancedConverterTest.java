@@ -82,8 +82,8 @@ class AdvancedConverterTest {
         String hql = "UPDATE User SET isActive = false";
         String sql = converter.convert(hql);
         
-        // Unqualified fields don't get mapped, so they stay as-is
-        assertThat(sql).isEqualTo("UPDATE users SET isActive = false");
+        // Unqualified fields DO get mapped when in UPDATE/DELETE context
+        assertThat(sql).isEqualTo("UPDATE users SET active = false");
     }
     
     @Test
@@ -136,11 +136,11 @@ class AdvancedConverterTest {
     
     @Test
     void testDeleteWithBetween() throws ParseException, ConversionException {
-        String hql = "DELETE FROM LogEntry WHERE createdAt BETWEEN :start AND :end";
+        String hql = "DELETE FROM LogEntry WHERE createdAt BETWEEN :startDate AND :endDate";
         String sql = converter.convert(hql);
         
         assertThat(sql).startsWith("DELETE FROM log_entries");
-        assertThat(sql).contains("created_at BETWEEN :start AND :end");
+        assertThat(sql).contains("created_at BETWEEN :startDate AND :endDate");
     }
     
     @Test

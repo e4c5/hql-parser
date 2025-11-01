@@ -83,14 +83,25 @@ public class QueryAnalysisVisitor extends HQLBaseVisitor<Void> {
         // Get the entity being deleted
         if (ctx.entityName() != null) {
             currentEntity = ctx.entityName().getText();
+            analysis.addEntity(currentEntity);
+            
+            // Track alias if present
+            if (ctx.identifier() != null) {
+                String alias = ctx.identifier().getText();
+                analysis.addAlias(alias);
+                aliasToEntity.put(alias, currentEntity);
+            }
         }
         
-        Void result = visitChildren(ctx);
+        // Visit WHERE clause to extract fields
+        if (ctx.whereClause() != null) {
+            visit(ctx.whereClause());
+        }
         
         inDeleteStatement = false;
         currentEntity = null;
         
-        return result;
+        return null;
     }
     
     // Override all the clause-level methods to ensure traversal

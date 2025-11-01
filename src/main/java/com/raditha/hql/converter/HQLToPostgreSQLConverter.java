@@ -359,6 +359,12 @@ public class HQLToPostgreSQLConverter {
             // Track current entity for unqualified field mapping
             currentEntity = entityName;
             
+            // Track alias if present (for qualified field references in WHERE clause)
+            if (ctx.identifier() != null) {
+                String alias = ctx.identifier().getText();
+                aliasToEntity.put(alias, entityName);
+            }
+            
             StringBuilder sql = new StringBuilder("DELETE FROM ");
             sql.append(tableName);
             
@@ -367,7 +373,11 @@ public class HQLToPostgreSQLConverter {
                 sql.append(visit(ctx.whereClause()));
             }
             
-            currentEntity = null;  // Clear context
+            // Clear context
+            currentEntity = null;
+            if (ctx.identifier() != null) {
+                aliasToEntity.remove(ctx.identifier().getText());
+            }
             
             return sql.toString();
         }
