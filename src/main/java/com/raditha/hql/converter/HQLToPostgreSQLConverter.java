@@ -91,6 +91,7 @@ public class HQLToPostgreSQLConverter {
         private final Map<String, String> entityToTableMap;
         private final Map<String, Map<String, String>> entityFieldToColumnMap;
         private final Map<String, String> aliasToEntity = new HashMap<>();
+        private String currentEntity = null;  // For UPDATE/DELETE without alias
         
         public PostgreSQLConversionVisitor(Map<String, String> entityToTableMap,
                                           Map<String, Map<String, String>> entityFieldToColumnMap) {
@@ -332,6 +333,9 @@ public class HQLToPostgreSQLConverter {
             String entityName = ctx.entityName().getText();
             String tableName = entityToTableMap.getOrDefault(entityName, entityName.toLowerCase());
             
+            // Track current entity for unqualified field mapping
+            currentEntity = entityName;
+            
             StringBuilder sql = new StringBuilder("UPDATE ");
             sql.append(tableName);
             sql.append(" ");
@@ -342,6 +346,8 @@ public class HQLToPostgreSQLConverter {
                 sql.append(visit(ctx.whereClause()));
             }
             
+            currentEntity = null;  // Clear context
+            
             return sql.toString();
         }
         
@@ -350,6 +356,9 @@ public class HQLToPostgreSQLConverter {
             String entityName = ctx.entityName().getText();
             String tableName = entityToTableMap.getOrDefault(entityName, entityName.toLowerCase());
             
+            // Track current entity for unqualified field mapping
+            currentEntity = entityName;
+            
             StringBuilder sql = new StringBuilder("DELETE FROM ");
             sql.append(tableName);
             
@@ -357,6 +366,8 @@ public class HQLToPostgreSQLConverter {
                 sql.append(" ");
                 sql.append(visit(ctx.whereClause()));
             }
+            
+            currentEntity = null;  // Clear context
             
             return sql.toString();
         }
@@ -380,7 +391,19 @@ public class HQLToPostgreSQLConverter {
             List<IdentifierContext> identifiers = ctx.identifier();
             
             if (identifiers.size() == 1) {
-                return identifiers.get(0).getText();
+                // Unqualified field - check if we can map it
+                String fieldName = identifiers.get(0).getText();
+                
+                // If we're in UPDATE/DELETE and have a current entity, try to map the field
+                if (currentEntity != null && entityFieldToColumnMap.containsKey(currentEntity)) {
+                    Map<String, String> fieldMappings = entityFieldToColumnMap.get(currentEntity);
+                    if (fieldMappings.containsKey(fieldName)) {
+                        return fieldMappings.get(fieldName);
+                    }
+                }
+                
+                // No mapping found, return as-is
+                return fieldName;
             } else if (identifiers.size() >= 2) {
                 String first = identifiers.get(0).getText();
                 String second = identifiers.get(1).getText();

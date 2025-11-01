@@ -15,6 +15,8 @@ public class QueryAnalysisVisitor extends HQLBaseVisitor<Void> {
     private final QueryAnalysis analysis;
     private final Map<String, String> aliasToEntity = new HashMap<>();
     private String currentEntity = null;
+    private boolean inUpdateStatement = false;
+    private boolean inDeleteStatement = false;
     
     public QueryAnalysisVisitor(QueryAnalysis analysis) {
         this.analysis = analysis;
@@ -59,12 +61,36 @@ public class QueryAnalysisVisitor extends HQLBaseVisitor<Void> {
     
     @Override
     public Void visitUpdateStatement(UpdateStatementContext ctx) {
-        return visitChildren(ctx);
+        inUpdateStatement = true;
+        
+        // Get the entity being updated
+        if (ctx.entityName() != null) {
+            currentEntity = ctx.entityName().getText();
+        }
+        
+        Void result = visitChildren(ctx);
+        
+        inUpdateStatement = false;
+        currentEntity = null;
+        
+        return result;
     }
     
     @Override
     public Void visitDeleteStatement(DeleteStatementContext ctx) {
-        return visitChildren(ctx);
+        inDeleteStatement = true;
+        
+        // Get the entity being deleted
+        if (ctx.entityName() != null) {
+            currentEntity = ctx.entityName().getText();
+        }
+        
+        Void result = visitChildren(ctx);
+        
+        inDeleteStatement = false;
+        currentEntity = null;
+        
+        return result;
     }
     
     // Override all the clause-level methods to ensure traversal
@@ -155,12 +181,19 @@ public class QueryAnalysisVisitor extends HQLBaseVisitor<Void> {
         List<IdentifierContext> identifiers = ctx.identifier();
         
         if (identifiers.size() == 1) {
-            // Could be an entity alias or field name alone
+            // Single identifier - could be:
+            // 1. An entity/alias reference
+            // 2. An unqualified field in UPDATE/DELETE
             String name = identifiers.get(0).getText();
+            
             // Check if it's a known alias - if so, don't treat as a field
-            if (!aliasToEntity.containsKey(name) && currentEntity != null) {
-                // Single identifier without dot - might be a field on implicit entity
-                // But in HQL, fields must be qualified, so skip this case
+            if (!aliasToEntity.containsKey(name)) {
+                // Not an alias, so it might be an unqualified field
+                // In UPDATE/DELETE without alias, fields can be unqualified
+                if ((inUpdateStatement || inDeleteStatement) && currentEntity != null) {
+                    // Add this as a field of the current entity
+                    analysis.addEntityField(currentEntity, name);
+                }
             }
         } else if (identifiers.size() >= 2) {
             // Format: alias.field or entity.field
