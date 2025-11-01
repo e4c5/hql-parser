@@ -13,6 +13,9 @@ This is a Java-based HQL/JPQL parser built with ANTLR4 that parses Hibernate Que
 # Clean and compile (includes ANTLR grammar generation)
 mvn clean compile
 
+# Generate ANTLR sources only (useful for IDE setup)
+mvn generate-sources
+
 # Create JAR package
 mvn package
 
@@ -41,6 +44,13 @@ mvn compile exec:java -Dexec.mainClass="com.raditha.hql.examples.UsageExamples"
 The ANTLR grammar is at `src/main/antlr4/com/raditha/hql/grammar/HQL.g4`. After modifying it:
 - Run `mvn clean compile` to regenerate parser/lexer classes
 - Generated code appears in `target/generated-sources/antlr4/`
+
+### IDE Setup (IntelliJ IDEA)
+If IntelliJ shows "Cannot find symbol: HQLLexer" errors:
+1. Run `mvn generate-sources` to create ANTLR-generated files
+2. In IntelliJ Maven tool window, click "Reload All Maven Projects"
+3. The `target/generated-sources/antlr4/` directory should be marked as "Generated Sources Root"
+4. See [INTELLIJ_SETUP.md](INTELLIJ_SETUP.md) for detailed troubleshooting
 
 ## Architecture
 

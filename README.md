@@ -19,6 +19,10 @@ A comprehensive Java parser for Hibernate Query Language (HQL) and Java Persiste
 - Java 11 or higher
 - Maven 3.6+
 
+## IDE Setup
+
+**IntelliJ IDEA Users:** If you're getting "Cannot find symbol" errors for ANTLR-generated classes, see [INTELLIJ_SETUP.md](INTELLIJ_SETUP.md) for configuration instructions.
+
 ## Installation
 
 ### Maven

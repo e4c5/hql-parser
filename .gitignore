@@ -41,3 +41,5 @@ src/hql_parser/generated/
 .coverage
 htmlcov/
 target/*
+hsl-parser.iml
+
