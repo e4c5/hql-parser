@@ -40,3 +40,4 @@ src/hql_parser/generated/
 .pytest_cache/
 .coverage
 htmlcov/
+target/*
