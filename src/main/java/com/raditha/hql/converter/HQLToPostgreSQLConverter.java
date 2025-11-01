@@ -99,17 +99,17 @@ public class HQLToPostgreSQLConverter {
         }
         
         @Override
-        public String visitStatement(StatementContext ctx) {
-            return visitChildren(ctx);
-        }
-        
-        @Override
         public String visitSelectStatement(SelectStatementContext ctx) {
             StringBuilder sql = new StringBuilder();
             
+            // IMPORTANT: Visit FROM first to build aliasToEntity map,
+            // but don't append to SQL yet
+            String fromSql = visit(ctx.fromClause());
+            
+            // Now visit SELECT with aliases resolved
             sql.append(visit(ctx.selectClause()));
             sql.append(" ");
-            sql.append(visit(ctx.fromClause()));
+            sql.append(fromSql);
             
             if (ctx.whereClause() != null) {
                 sql.append(" ");
@@ -217,7 +217,31 @@ public class HQLToPostgreSQLConverter {
             sql.append(" ").append(joinPath);
             
             if (ctx.identifier() != null) {
-                sql.append(" ").append(ctx.identifier().getText());
+                String joinAlias = ctx.identifier().getText();
+                sql.append(" ").append(joinAlias);
+                
+                // Try to determine the entity for this join
+                // The join path is typically "alias.field" where the field references a collection
+                // Use a heuristic: singularize the field name and capitalize it
+                // e.g., "orders" → "Order", "users" → "User"
+                String pathText = ctx.path().getText();
+                if (pathText.contains(".")) {
+                    String[] parts = pathText.split("\\.");
+                    if (parts.length >= 2) {
+                        String fieldName = parts[parts.length - 1];
+                        // Simple heuristic: remove 's' suffix and capitalize
+                        String entityName = fieldName;
+                        if (entityName.endsWith("s") && entityName.length() > 1) {
+                            entityName = entityName.substring(0, entityName.length() - 1);
+                        }
+                        entityName = Character.toUpperCase(entityName.charAt(0)) + entityName.substring(1);
+                        
+                        // Check if this entity is registered
+                        if (entityToTableMap.containsKey(entityName) || entityFieldToColumnMap.containsKey(entityName)) {
+                            aliasToEntity.put(joinAlias, entityName);
+                        }
+                    }
+                }
             }
             
             if (ctx.expression() != null) {
@@ -371,14 +395,252 @@ public class HQLToPostgreSQLConverter {
         }
         
         @Override
+        public String visitStatement(StatementContext ctx) {
+            // Don't use default aggregation for statement - handle each child explicitly
+            if (ctx.selectStatement() != null) {
+                return visit(ctx.selectStatement());
+            } else if (ctx.updateStatement() != null) {
+                return visit(ctx.updateStatement());
+            } else if (ctx.deleteStatement() != null) {
+                return visit(ctx.deleteStatement());
+            } else if (ctx.insertStatement() != null) {
+                return visit(ctx.insertStatement());
+            }
+            return "";
+        }
+        
+        // Override all expression visitor methods to handle them explicitly
+        @Override
+        public String visitPrimaryExpression(PrimaryExpressionContext ctx) {
+            return visit(ctx.primary());
+        }
+        
+        @Override
+        public String visitEqualityExpression(EqualityExpressionContext ctx) {
+            List<ExpressionContext> expressions = ctx.expression();
+            return visit(expressions.get(0)) + " " + ctx.op.getText() + " " + visit(expressions.get(1));
+        }
+        
+        @Override
+        public String visitComparisonExpression(ComparisonExpressionContext ctx) {
+            List<ExpressionContext> expressions = ctx.expression();
+            return visit(expressions.get(0)) + " " + ctx.op.getText() + " " + visit(expressions.get(1));
+        }
+        
+        @Override
+        public String visitAdditiveExpression(AdditiveExpressionContext ctx) {
+            List<ExpressionContext> expressions = ctx.expression();
+            return visit(expressions.get(0)) + " " + ctx.op.getText() + " " + visit(expressions.get(1));
+        }
+        
+        @Override
+        public String visitMultiplicativeExpression(MultiplicativeExpressionContext ctx) {
+            List<ExpressionContext> expressions = ctx.expression();
+            return visit(expressions.get(0)) + " " + ctx.op.getText() + " " + visit(expressions.get(1));
+        }
+        
+        @Override
+        public String visitAndExpression(AndExpressionContext ctx) {
+            List<ExpressionContext> expressions = ctx.expression();
+            return visit(expressions.get(0)) + " AND " + visit(expressions.get(1));
+        }
+        
+        @Override
+        public String visitOrExpression(OrExpressionContext ctx) {
+            List<ExpressionContext> expressions = ctx.expression();
+            return visit(expressions.get(0)) + " OR " + visit(expressions.get(1));
+        }
+        
+        @Override
+        public String visitNotExpression(NotExpressionContext ctx) {
+            return "NOT " + visit(ctx.expression());
+        }
+        
+        @Override
+        public String visitIsNullExpression(IsNullExpressionContext ctx) {
+            String result = visit(ctx.expression()) + " IS";
+            if (ctx.NOT() != null) {
+                result += " NOT";
+            }
+            result += " NULL";
+            return result;
+        }
+        
+        @Override
+        public String visitBetweenExpression(BetweenExpressionContext ctx) {
+            List<ExpressionContext> expressions = ctx.expression();
+            String result = visit(expressions.get(0));
+            if (ctx.NOT() != null) {
+                result += " NOT";
+            }
+            result += " BETWEEN " + visit(expressions.get(1)) + " AND " + visit(expressions.get(2));
+            return result;
+        }
+        
+        @Override
+        public String visitInExpression(InExpressionContext ctx) {
+            String result = visit(ctx.expression());
+            if (ctx.NOT() != null) {
+                result += " NOT";
+            }
+            result += " IN (";
+            if (ctx.expressionList() != null) {
+                result += visit(ctx.expressionList());
+            } else if (ctx.selectStatement() != null) {
+                result += visit(ctx.selectStatement());
+            }
+            result += ")";
+            return result;
+        }
+        
+        @Override
+        public String visitLikeExpression(LikeExpressionContext ctx) {
+            List<ExpressionContext> expressions = ctx.expression();
+            String result = visit(expressions.get(0));
+            if (ctx.NOT() != null) {
+                result += " NOT";
+            }
+            result += " LIKE " + visit(expressions.get(1));
+            if (ctx.STRING() != null) {
+                result += " ESCAPE " + ctx.STRING().getText();
+            }
+            return result;
+        }
+        
+        @Override
+        public String visitMemberOfExpression(MemberOfExpressionContext ctx) {
+            String result = visit(ctx.expression()) + " MEMBER";
+            if (ctx.OF() != null) {
+                result += " OF";
+            }
+            result += " " + visit(ctx.path());
+            return result;
+        }
+        
+        @Override
+        public String visitExistsExpression(ExistsExpressionContext ctx) {
+            return "EXISTS (" + visit(ctx.selectStatement()) + ")";
+        }
+        
+        @Override
+        public String visitParenthesizedExpression(ParenthesizedExpressionContext ctx) {
+            return "(" + visit(ctx.expression()) + ")";
+        }
+        
+        @Override
+        public String visitMemberAccessExpression(MemberAccessExpressionContext ctx) {
+            return visit(ctx.expression()) + "." + ctx.identifier().getText();
+        }
+        
+        @Override
+        public String visitFunctionCallExpression(FunctionCallExpressionContext ctx) {
+            return visit(ctx.functionCall());
+        }
+        
+        @Override
+        public String visitCaseExpr(CaseExprContext ctx) {
+            return visit(ctx.caseExpression());
+        }
+        
+        @Override
+        public String visitPrimary(PrimaryContext ctx) {
+            if (ctx.literal() != null) {
+                return ctx.literal().getText();
+            } else if (ctx.path() != null) {
+                return visit(ctx.path());
+            } else if (ctx.parameter() != null) {
+                return visit(ctx.parameter());
+            } else if (ctx.selectStatement() != null) {
+                return "(" + visit(ctx.selectStatement()) + ")";
+            }
+            return "";
+        }
+        
+        @Override
+        public String visitCaseExpression(CaseExpressionContext ctx) {
+            StringBuilder sb = new StringBuilder("CASE");
+            List<ExpressionContext> expressions = ctx.expression();
+            if (expressions != null && !expressions.isEmpty()) {
+                sb.append(" ").append(visit(expressions.get(0)));
+            }
+            for (WhenClauseContext when : ctx.whenClause()) {
+                sb.append(" ").append(visit(when));
+            }
+            if (ctx.ELSE() != null) {
+                int exprIndex = expressions != null && !expressions.isEmpty() ? 
+                    ctx.whenClause().size() + 1 : ctx.whenClause().size();
+                if (exprIndex < expressions.size()) {
+                    sb.append(" ELSE ").append(visit(expressions.get(exprIndex)));
+                }
+            }
+            sb.append(" END");
+            return sb.toString();
+        }
+        
+        @Override
+        public String visitWhenClause(WhenClauseContext ctx) {
+            List<ExpressionContext> expressions = ctx.expression();
+            return "WHEN " + visit(expressions.get(0)) + " THEN " + visit(expressions.get(1));
+        }
+        
+        @Override
+        public String visitFunctionCall(FunctionCallContext ctx) {
+            // Handle specific function patterns
+            List<ExpressionContext> expressions = ctx.expression();
+            if (ctx.AVG() != null) {
+                String distinct = ctx.DISTINCT() != null ? "DISTINCT " : "";
+                return "AVG(" + distinct + visit(expressions.get(0)) + ")";
+            } else if (ctx.COUNT() != null) {
+                String distinct = ctx.DISTINCT() != null ? "DISTINCT " : "";
+                return "COUNT(" + distinct + visit(expressions.get(0)) + ")";
+            } else if (ctx.SUM() != null) {
+                String distinct = ctx.DISTINCT() != null ? "DISTINCT " : "";
+                return "SUM(" + distinct + visit(expressions.get(0)) + ")";
+            } else if (ctx.MAX() != null) {
+                return "MAX(" + visit(expressions.get(0)) + ")";
+            } else if (ctx.MIN() != null) {
+                return "MIN(" + visit(expressions.get(0)) + ")";
+            } else if (ctx.UPPER() != null) {
+                return "UPPER(" + visit(expressions.get(0)) + ")";
+            } else if (ctx.LOWER() != null) {
+                return "LOWER(" + visit(expressions.get(0)) + ")";
+            } else if (ctx.LENGTH() != null) {
+                return "LENGTH(" + visit(expressions.get(0)) + ")";
+            } else if (ctx.ABS() != null) {
+                return "ABS(" + visit(expressions.get(0)) + ")";
+            } else if (ctx.SQRT() != null) {
+                return "SQRT(" + visit(expressions.get(0)) + ")";
+            } else if (ctx.CURRENT_DATE() != null) {
+                return "CURRENT_DATE";
+            } else if (ctx.CURRENT_TIME() != null) {
+                return "CURRENT_TIME";
+            } else if (ctx.CURRENT_TIMESTAMP() != null) {
+                return "CURRENT_TIMESTAMP";
+            } else if (ctx.CONCAT() != null) {
+                return "CONCAT(" + visit(ctx.expressionList()) + ")";
+            } else if (ctx.COALESCE() != null) {
+                return "COALESCE(" + visit(ctx.expressionList()) + ")";
+            } else if (ctx.SIZE() != null) {
+                return "SIZE(" + visit(ctx.path()) + ")";
+            }
+            // Default for custom functions
+            if (ctx.identifier() != null) {
+                String args = ctx.expressionList() != null ? visit(ctx.expressionList()) : "";
+                return ctx.identifier().getText() + "(" + args + ")";
+            }
+            return "";
+        }
+        
+        @Override
         protected String aggregateResult(String aggregate, String nextResult) {
+            // Should not be called anymore since we handle everything explicitly
             if (aggregate == null) {
                 return nextResult;
             }
             if (nextResult == null) {
                 return aggregate;
             }
-            return aggregate + " " + nextResult;
+            return aggregate + nextResult;
         }
         
         @Override

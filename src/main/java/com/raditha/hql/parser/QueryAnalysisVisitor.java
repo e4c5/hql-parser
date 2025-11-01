@@ -20,6 +20,105 @@ public class QueryAnalysisVisitor extends HQLBaseVisitor<Void> {
         this.analysis = analysis;
     }
     
+    // Make sure top-level statements traverse their children
+    @Override
+    public Void visitStatement(StatementContext ctx) {
+        return visitChildren(ctx);
+    }
+    
+    @Override
+    public Void visitSelectStatement(SelectStatementContext ctx) {
+        // Visit FROM clause first to build alias map, then visit other clauses
+        if (ctx.fromClause() != null) {
+            visit(ctx.fromClause());
+        }
+        
+        // Now visit other clauses
+        if (ctx.selectClause() != null) {
+            visit(ctx.selectClause());
+        }
+        
+        if (ctx.whereClause() != null) {
+            visit(ctx.whereClause());
+        }
+        
+        if (ctx.groupByClause() != null) {
+            visit(ctx.groupByClause());
+        }
+        
+        if (ctx.havingClause() != null) {
+            visit(ctx.havingClause());
+        }
+        
+        if (ctx.orderByClause() != null) {
+            visit(ctx.orderByClause());
+        }
+        
+        return null;
+    }
+    
+    @Override
+    public Void visitUpdateStatement(UpdateStatementContext ctx) {
+        return visitChildren(ctx);
+    }
+    
+    @Override
+    public Void visitDeleteStatement(DeleteStatementContext ctx) {
+        return visitChildren(ctx);
+    }
+    
+    // Override all the clause-level methods to ensure traversal
+    @Override
+    public Void visitSelectClause(SelectClauseContext ctx) {
+        return visitChildren(ctx);
+    }
+    
+    @Override
+    public Void visitFromClause(FromClauseContext ctx) {
+        return visitChildren(ctx);
+    }
+    
+    @Override
+    public Void visitWhereClause(WhereClauseContext ctx) {
+        return visitChildren(ctx);
+    }
+    
+    @Override
+    public Void visitSelectItemList(SelectItemListContext ctx) {
+        return visitChildren(ctx);
+    }
+    
+    @Override
+    public Void visitSelectItem(SelectItemContext ctx) {
+        return visitChildren(ctx);
+    }
+    
+    // For all expression types, traverse children
+    @Override
+    public Void visitPrimaryExpression(PrimaryExpressionContext ctx) {
+        return visitChildren(ctx);
+    }
+    
+    @Override
+    public Void visitPrimary(PrimaryContext ctx) {
+        return visitChildren(ctx);
+    }
+    
+    // The key insight: BaseVisitor's implementation of each visit method returns defaultResult()
+    // WITHOUT calling visitChildren(). So we need to override the base behavior.
+    // The solution: for any context not explicitly overridden, call visitChildren!
+    @Override
+    public Void visitChildren(org.antlr.v4.runtime.tree.RuleNode node) {
+        Void result = null;
+        int n = node.getChildCount();
+        for (int i = 0; i < n; i++) {
+            org.antlr.v4.runtime.tree.ParseTree c = node.getChild(i);
+            Void childResult = c.accept(this);
+            // No need to aggregate, we're just traversing
+        }
+        return result;
+    }
+    
     @Override
     public Void visitFromItem(FromItemContext ctx) {
         if (ctx.entityName() != null) {
@@ -56,12 +155,12 @@ public class QueryAnalysisVisitor extends HQLBaseVisitor<Void> {
         List<IdentifierContext> identifiers = ctx.identifier();
         
         if (identifiers.size() == 1) {
-            // Could be an entity alias or field
+            // Could be an entity alias or field name alone
             String name = identifiers.get(0).getText();
-            if (aliasToEntity.containsKey(name)) {
-                // It's an alias reference
-                String entity = aliasToEntity.get(name);
-                // Don't add as entity again
+            // Check if it's a known alias - if so, don't treat as a field
+            if (!aliasToEntity.containsKey(name) && currentEntity != null) {
+                // Single identifier without dot - might be a field on implicit entity
+                // But in HQL, fields must be qualified, so skip this case
             }
         } else if (identifiers.size() >= 2) {
             // Format: alias.field or entity.field
@@ -85,7 +184,29 @@ public class QueryAnalysisVisitor extends HQLBaseVisitor<Void> {
             }
         }
         
-        return visitChildren(ctx);
+        // Paths are leaf nodes (identifiers are terminals), so no children to visit
+        return null;
+    }
+    
+    // Override visit() to ensure all nodes are visited
+    @Override
+    public Void visit(org.antlr.v4.runtime.tree.ParseTree tree) {
+        if (tree == null) {
+            return null;
+        }
+        return tree.accept(this);
+    }
+    
+    // For terminal nodes, just return null
+    @Override
+    public Void visitTerminal(org.antlr.v4.runtime.tree.TerminalNode node) {
+        return null;
+    }
+    
+    // For error nodes, just return null
+    @Override
+    public Void visitErrorNode(org.antlr.v4.runtime.tree.ErrorNode node) {
+        return null;
     }
     
     @Override
@@ -96,7 +217,8 @@ public class QueryAnalysisVisitor extends HQLBaseVisitor<Void> {
         } else if (paramText.startsWith("?")) {
             analysis.addParameter(paramText);
         }
-        return visitChildren(ctx);
+        // Parameters are leaf nodes
+        return null;
     }
     
     @Override
@@ -105,6 +227,7 @@ public class QueryAnalysisVisitor extends HQLBaseVisitor<Void> {
         if (!analysis.getEntityNames().contains(entityName)) {
             analysis.addEntity(entityName);
         }
-        return visitChildren(ctx);
+        // EntityName is a leaf node (just an identifier)
+        return null;
     }
 }
