@@ -72,8 +72,10 @@ If IntelliJ shows "Cannot find symbol: HQLLexer" errors:
 
 **Grammar** (`src/main/antlr4/com/raditha/hql/grammar/HQL.g4`):
 - Single combined ANTLR4 grammar defining both lexer and parser rules
-- Supports: SELECT/UPDATE/DELETE/INSERT, joins, aggregates, case expressions, parameters
+- Supports: SELECT/UPDATE/DELETE (with optional aliases)/INSERT, joins, aggregates, case expressions, parameters
+- DELETE grammar: `DELETE FROM? entityName (AS? identifier)? whereClause?`
 - Case-insensitive keywords
+- Note: Avoid using HQL keywords (like `end`, `and`) as parameter names
 
 ### Design Patterns
 
@@ -99,17 +101,23 @@ If IntelliJ shows "Cannot find symbol: HQLLexer" errors:
 - Entities and fields are tracked per-entity in `Map<String, Set<String>>`
 - Parameters are stored without prefix (`:userName` → `userName`)
 - Aliases are preserved in order as they appear
+- DELETE statements with aliases properly track alias-to-entity mappings
+- WHERE clauses in DELETE statements are explicitly visited for field extraction
 
 ### SQL Conversion Requirements
 - Entity mappings MUST be registered before calling `convert()`
 - Field mappings are optional - unmapped fields use their original name
 - Alias-to-entity tracking is maintained during conversion
 - FETCH joins are silently ignored (HQL-specific)
+- **Unqualified field mapping**: In UPDATE/DELETE statements without aliases, unqualified fields (e.g., `SET active = false`) are automatically mapped to columns using registered field mappings
+- **Current entity tracking**: The converter tracks `currentEntity` context during UPDATE/DELETE to enable unqualified field resolution
 
 ### Testing with JUnit 5 and AssertJ
 - Tests use fluent AssertJ assertions (`assertThat()`)
 - Each test should focus on a single HQL feature
 - Use `@BeforeEach` to initialize fresh `HQLParser` instances
+- Current test suite: 93 tests covering parser analysis and SQL conversion
+- Test classes: `HQLParserTest`, `AdvancedHQLParserTest`, `PostgreSQLConverterTest`, `AdvancedConverterTest`
 
 ## Common Development Patterns
 
@@ -126,9 +134,10 @@ If IntelliJ shows "Cannot find symbol: HQLLexer" errors:
 - Visit specific context methods (e.g., `visitSelectStatement()`)
 
 ### Parameter Handling
-- Named parameters: `:paramName` in HQL
+- Named parameters: `:paramName` in HQL (avoid keywords like `:end`, use `:endDate` instead)
 - Positional parameters: `?1`, `?2` in HQL
 - PostgreSQL conversion currently keeps original format (not converted to `$1`, `$2`)
+- Lexer tokenizes keywords with priority, so parameter names that match keywords won't parse correctly
 
 ## Project Dependencies
 
@@ -136,3 +145,27 @@ If IntelliJ shows "Cannot find symbol: HQLLexer" errors:
 - **JUnit 5.10.1**: Testing framework
 - **AssertJ 3.24.2**: Fluent assertions for tests
 - **Java 11+**: Minimum required version
+
+## Known Limitations
+
+### Core Limitations
+1. **No JPA/Hibernate Metadata Access**: The converter requires manual entity/field mapping registration. It cannot introspect `@Entity`, `@Table`, `@Column` annotations or read persistence.xml.
+
+2. **Implicit JOIN ON Clauses**: Cannot generate ON clauses for HQL implicit joins (e.g., `u.orders`). Requires explicit ON clauses for SQL output.
+
+3. **Parameter Format**: Keeps HQL format (`:param`, `?1`) rather than converting to PostgreSQL format (`$1`, `$2`).
+
+4. **Collection Join Inference**: Uses heuristics (singularization) to infer entity names from collection fields, may fail for irregular plurals.
+
+### Missing Grammar Features
+- `TREAT()` operator for polymorphic queries
+- `INDEX()`, `KEY()`, `VALUE()` functions for collections
+- `TYPE()` operator for inheritance
+- Constructor expressions (`SELECT NEW dto.Class(...)`)
+- Bulk INSERT with VALUES clause
+
+### Best Practices
+- Avoid using HQL keywords as parameter names
+- Use explicit ON clauses in joins for SQL conversion
+- Register all entity-to-table and field-to-column mappings before conversion
+- Test queries with both parser analysis and SQL conversion to catch issues early
