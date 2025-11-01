@@ -3,7 +3,6 @@ package com.raditha.hql.parser;
 import com.raditha.hql.grammar.HQLBaseVisitor;
 import com.raditha.hql.grammar.HQLParser.*;
 import com.raditha.hql.model.QueryAnalysis;
-import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.*;
 
@@ -150,7 +149,7 @@ public class QueryAnalysisVisitor extends HQLBaseVisitor<Void> {
         int n = node.getChildCount();
         for (int i = 0; i < n; i++) {
             org.antlr.v4.runtime.tree.ParseTree c = node.getChild(i);
-            Void childResult = c.accept(this);
+            c.accept(this);
             // No need to aggregate, we're just traversing
         }
         return result;
@@ -175,14 +174,9 @@ public class QueryAnalysisVisitor extends HQLBaseVisitor<Void> {
     
     @Override
     public Void visitJoinClause(JoinClauseContext ctx) {
-        if (ctx.path() != null) {
-            String joinPath = ctx.path().getText();
-            
-            // Track alias for join
-            if (ctx.identifier() != null) {
-                String alias = ctx.identifier().getText();
-                analysis.addAlias(alias);
-            }
+        if (ctx.path() != null && ctx.identifier() != null) {
+            String alias = ctx.identifier().getText();
+            analysis.addAlias(alias);
         }
         return visitChildren(ctx);
     }

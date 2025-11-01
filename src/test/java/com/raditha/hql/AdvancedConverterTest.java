@@ -5,6 +5,8 @@ import com.raditha.hql.converter.HQLToPostgreSQLConverter;
 import com.raditha.hql.parser.ParseException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -116,40 +118,28 @@ class AdvancedConverterTest {
         assertThat(sql).contains("IN ('INACTIVE', 'BANNED', 'DELETED')");
     }
     
-    @Test
-    void testDeleteWithIsNull() throws ParseException, ConversionException {
-        String hql = "DELETE FROM Session s WHERE s.lastAccessTime IS NULL";
+    @ParameterizedTest
+    @CsvSource({
+        "DELETE FROM Session s WHERE s.lastAccessTime IS NULL, DELETE FROM sessions, last_access IS NULL",
+        "DELETE FROM Session s WHERE s.lastAccessTime IS NOT NULL, DELETE FROM sessions, last_access IS NOT NULL"
+    })
+    void testDeleteWithNullChecks(String hql, String expectedStart, String expectedContains) throws ParseException, ConversionException {
         String sql = converter.convert(hql);
         
-        assertThat(sql).startsWith("DELETE FROM sessions");
-        assertThat(sql).contains("last_access IS NULL");
+        assertThat(sql).startsWith(expectedStart);
+        assertThat(sql).contains(expectedContains);
     }
     
-    @Test
-    void testDeleteWithIsNotNull() throws ParseException, ConversionException {
-        String hql = "DELETE FROM Session s WHERE s.lastAccessTime IS NOT NULL";
+    @ParameterizedTest
+    @CsvSource({
+        "DELETE FROM LogEntry WHERE createdAt BETWEEN :startDate AND :endDate, DELETE FROM log_entries, created_at BETWEEN :startDate AND :endDate",
+        "DELETE FROM LogEntry l WHERE l.level NOT BETWEEN 1 AND 3, DELETE FROM log_entries, level NOT BETWEEN 1 AND 3"
+    })
+    void testDeleteWithBetween(String hql, String expectedStart, String expectedContains) throws ParseException, ConversionException {
         String sql = converter.convert(hql);
         
-        assertThat(sql).startsWith("DELETE FROM sessions");
-        assertThat(sql).contains("last_access IS NOT NULL");
-    }
-    
-    @Test
-    void testDeleteWithBetween() throws ParseException, ConversionException {
-        String hql = "DELETE FROM LogEntry WHERE createdAt BETWEEN :startDate AND :endDate";
-        String sql = converter.convert(hql);
-        
-        assertThat(sql).startsWith("DELETE FROM log_entries");
-        assertThat(sql).contains("created_at BETWEEN :startDate AND :endDate");
-    }
-    
-    @Test
-    void testDeleteWithNotBetween() throws ParseException, ConversionException {
-        String hql = "DELETE FROM LogEntry l WHERE l.level NOT BETWEEN 1 AND 3";
-        String sql = converter.convert(hql);
-        
-        assertThat(sql).startsWith("DELETE FROM log_entries");
-        assertThat(sql).contains("level NOT BETWEEN 1 AND 3");
+        assertThat(sql).startsWith(expectedStart);
+        assertThat(sql).contains(expectedContains);
     }
     
     // ========== SELECT Advanced Tests ==========
@@ -170,22 +160,17 @@ class AdvancedConverterTest {
         assertThat(sql).contains("WHERE u.active = true");
     }
     
-    @Test
-    void testSelectWithRightJoin() throws ParseException, ConversionException {
-        String hql = "SELECT u.userName, o.totalAmount FROM User u RIGHT JOIN u.orders o";
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', value = {
+        "SELECT u.userName, o.totalAmount FROM User u RIGHT JOIN u.orders o | RIGHT JOIN orders o,u.user_name,o.total",
+        "SELECT u FROM User u LEFT OUTER JOIN u.orders o WHERE o.id IS NULL | LEFT OUTER JOIN"
+    })
+    void testSelectWithJoinVariants(String hql, String expectedContains) throws ParseException, ConversionException {
         String sql = converter.convert(hql);
         
-        assertThat(sql).contains("RIGHT JOIN orders o");
-        assertThat(sql).contains("u.user_name");
-        assertThat(sql).contains("o.total");
-    }
-    
-    @Test
-    void testSelectWithLeftOuterJoin() throws ParseException, ConversionException {
-        String hql = "SELECT u FROM User u LEFT OUTER JOIN u.orders o WHERE o.id IS NULL";
-        String sql = converter.convert(hql);
-        
-        assertThat(sql).contains("LEFT OUTER JOIN");
+        for (String expected : expectedContains.split(",")) {
+            assertThat(sql).contains(expected);
+        }
     }
     
     @Test
@@ -243,36 +228,26 @@ class AdvancedConverterTest {
         assertThat(sql).contains("ORDER BY u.country ASC, u.last_name DESC");
     }
     
-    @Test
-    void testSelectWithOrderByNullsFirst() throws ParseException, ConversionException {
-        String hql = "SELECT u FROM User u ORDER BY u.lastLogin DESC NULLS FIRST";
+    @ParameterizedTest
+    @CsvSource({
+        "SELECT u FROM User u ORDER BY u.lastLogin DESC NULLS FIRST, ORDER BY u.last_login_at DESC NULLS FIRST",
+        "SELECT u FROM User u ORDER BY u.lastLogin ASC NULLS LAST, ORDER BY u.last_login_at ASC NULLS LAST"
+    })
+    void testSelectWithOrderByNulls(String hql, String expectedContains) throws ParseException, ConversionException {
         String sql = converter.convert(hql);
         
-        assertThat(sql).contains("ORDER BY u.last_login_at DESC NULLS FIRST");
+        assertThat(sql).contains(expectedContains);
     }
     
-    @Test
-    void testSelectWithOrderByNullsLast() throws ParseException, ConversionException {
-        String hql = "SELECT u FROM User u ORDER BY u.lastLogin ASC NULLS LAST";
+    @ParameterizedTest
+    @CsvSource({
+        "SELECT u FROM User u WHERE u.emailAddress LIKE :pattern, u.email LIKE :pattern",
+        "SELECT u FROM User u WHERE u.emailAddress NOT LIKE '%@test.com', u.email NOT LIKE '%@test.com'"
+    })
+    void testSelectWithLike(String hql, String expectedContains) throws ParseException, ConversionException {
         String sql = converter.convert(hql);
         
-        assertThat(sql).contains("ORDER BY u.last_login_at ASC NULLS LAST");
-    }
-    
-    @Test
-    void testSelectWithLike() throws ParseException, ConversionException {
-        String hql = "SELECT u FROM User u WHERE u.emailAddress LIKE :pattern";
-        String sql = converter.convert(hql);
-        
-        assertThat(sql).contains("u.email LIKE :pattern");
-    }
-    
-    @Test
-    void testSelectWithNotLike() throws ParseException, ConversionException {
-        String hql = "SELECT u FROM User u WHERE u.emailAddress NOT LIKE '%@test.com'";
-        String sql = converter.convert(hql);
-        
-        assertThat(sql).contains("u.email NOT LIKE '%@test.com'");
+        assertThat(sql).contains(expectedContains);
     }
     
     @Test
@@ -322,48 +297,31 @@ class AdvancedConverterTest {
     
     // ========== Current Date/Time Functions ==========
     
-    @Test
-    void testCurrentDate() throws ParseException, ConversionException {
-        String hql = "SELECT CURRENT_DATE FROM User u";
+    @ParameterizedTest
+    @CsvSource({
+        "SELECT CURRENT_DATE FROM User u, CURRENT_DATE",
+        "SELECT CURRENT_TIME FROM User u, CURRENT_TIME",
+        "UPDATE User SET lastModified = CURRENT_TIMESTAMP WHERE id = :id, CURRENT_TIMESTAMP"
+    })
+    void testCurrentDateTimeFunctions(String hql, String expectedContains) throws ParseException, ConversionException {
         String sql = converter.convert(hql);
         
-        assertThat(sql).contains("CURRENT_DATE");
-    }
-    
-    @Test
-    void testCurrentTime() throws ParseException, ConversionException {
-        String hql = "SELECT CURRENT_TIME FROM User u";
-        String sql = converter.convert(hql);
-        
-        assertThat(sql).contains("CURRENT_TIME");
-    }
-    
-    @Test
-    void testCurrentTimestamp() throws ParseException, ConversionException {
-        String hql = "UPDATE User SET lastModified = CURRENT_TIMESTAMP WHERE id = :id";
-        String sql = converter.convert(hql);
-        
-        assertThat(sql).contains("CURRENT_TIMESTAMP");
+        assertThat(sql).contains(expectedContains);
     }
     
     // ========== Named and Positional Parameters ==========
     
-    @Test
-    void testNamedParameters() throws ParseException, ConversionException {
-        String hql = "SELECT u FROM User u WHERE u.userName = :name AND u.age > :minAge";
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', value = {
+        "SELECT u FROM User u WHERE u.userName = :name AND u.age > :minAge | :name,:minAge",
+        "SELECT u FROM User u WHERE u.userName = ?1 AND u.age > ?2 | ?1,?2"
+    })
+    void testParameters(String hql, String expectedParams) throws ParseException, ConversionException {
         String sql = converter.convert(hql);
         
-        assertThat(sql).contains(":name");
-        assertThat(sql).contains(":minAge");
-    }
-    
-    @Test
-    void testPositionalParameters() throws ParseException, ConversionException {
-        String hql = "SELECT u FROM User u WHERE u.userName = ?1 AND u.age > ?2";
-        String sql = converter.convert(hql);
-        
-        assertThat(sql).contains("?1");
-        assertThat(sql).contains("?2");
+        for (String param : expectedParams.split(",")) {
+            assertThat(sql).contains(param);
+        }
     }
     
     // ========== Edge Cases ==========

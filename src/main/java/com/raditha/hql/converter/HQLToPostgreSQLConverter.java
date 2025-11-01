@@ -217,7 +217,6 @@ public class HQLToPostgreSQLConverter {
             // In HQL, joins are like "u.orders o" where u is alias, orders is collection field
             // In SQL, we need to convert this to the actual table name
             String pathText = ctx.path().getText();
-            String parentAlias = null;
             String fieldName = null;
             String tableName = null;
             String joinEntityName = null;
@@ -225,7 +224,6 @@ public class HQLToPostgreSQLConverter {
             if (pathText.contains(".")) {
                 String[] parts = pathText.split("\\.");
                 if (parts.length >= 2) {
-                    parentAlias = parts[0];
                     fieldName = parts[parts.length - 1];
                     
                     // Use heuristic to determine entity name from collection field
