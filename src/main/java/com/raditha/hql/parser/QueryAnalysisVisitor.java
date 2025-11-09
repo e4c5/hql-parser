@@ -82,14 +82,15 @@ public class QueryAnalysisVisitor extends HQLBaseVisitor<Void> {
         // Get the entity being deleted
         if (ctx.entityName() != null) {
             currentEntity = ctx.entityName().getText();
-            analysis.addEntity(currentEntity);
+            String alias = null;
             
             // Track alias if present
             if (ctx.identifier() != null) {
-                String alias = ctx.identifier().getText();
-                analysis.addAlias(alias);
+                alias = ctx.identifier().getText();
                 aliasToEntity.put(alias, currentEntity);
             }
+            
+            analysis.addEntity(currentEntity, alias);
         }
         
         // Visit WHERE clause to extract fields
@@ -159,26 +160,42 @@ public class QueryAnalysisVisitor extends HQLBaseVisitor<Void> {
     public Void visitFromItem(FromItemContext ctx) {
         if (ctx.entityName() != null) {
             String entityName = ctx.entityName().getText();
-            analysis.addEntity(entityName);
-            currentEntity = entityName;
+            String alias = null;
             
             // Track alias
             if (ctx.identifier() != null) {
-                String alias = ctx.identifier().getText();
-                analysis.addAlias(alias);
+                alias = ctx.identifier().getText();
                 aliasToEntity.put(alias, entityName);
             }
+            
+            analysis.addEntity(entityName, alias);
+            currentEntity = entityName;
         }
         return visitChildren(ctx);
     }
     
     @Override
     public Void visitJoinClause(JoinClauseContext ctx) {
-        if (ctx.path() != null && ctx.identifier() != null) {
-            String alias = ctx.identifier().getText();
-            analysis.addAlias(alias);
+        if (ctx.path() != null) {
+            // The path in a join clause represents the entity being joined
+            String entityName = ctx.path().getText();
+            String alias = null;
+            
+            // Track alias if present
+            if (ctx.identifier() != null) {
+                alias = ctx.identifier().getText();
+                aliasToEntity.put(alias, entityName);
+            }
+            
+            analysis.addEntity(entityName, alias);
         }
-        return visitChildren(ctx);
+        
+        // Visit the ON condition if present
+        if (ctx.expression() != null) {
+            visit(ctx.expression());
+        }
+        
+        return null;
     }
     
     @Override
