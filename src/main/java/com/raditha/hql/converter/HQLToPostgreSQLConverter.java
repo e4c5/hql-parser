@@ -86,7 +86,6 @@ public class HQLToPostgreSQLConverter {
         
         private final Map<String, String> entityToTableMap;
         private final Map<String, Map<String, String>> entityFieldToColumnMap;
-        private final Map<String, String> aliasToEntity = new HashMap<>();
         private String currentEntity = null;  // For UPDATE/DELETE without alias
         
         private final QueryAnalysis analysis;
@@ -97,15 +96,13 @@ public class HQLToPostgreSQLConverter {
             this.entityToTableMap = entityToTableMap;
             this.entityFieldToColumnMap = entityFieldToColumnMap;
             this.analysis = analysis;
-            // Initialize aliasToEntity from QueryAnalysis
-            this.aliasToEntity.putAll(analysis.getAliasToEntity());
         }
         
         @Override
         public String visitSelectStatement(SelectStatementContext ctx) {
             StringBuilder sql = new StringBuilder();
             
-            // IMPORTANT: Visit FROM first to build aliasToEntity map,
+            // IMPORTANT: Visit FROM first to establish table context,
             // but don't append to SQL yet
             String fromSql = visit(ctx.fromClause());
             
@@ -358,9 +355,13 @@ public class HQLToPostgreSQLConverter {
                 String first = identifiers.get(0).getText();
                 String second = identifiers.get(1).getText();
                 
-                // Check if first is an alias
-                String entityName = aliasToEntity.getOrDefault(first, first);
-                
+                // Check if first is an alias - use QueryAnalysis instead of local map
+                String entityName = analysis.getEntityForAlias(first);
+                if (entityName == null) {
+                    // Not an alias, might be entity name itself
+                    entityName = first;
+                }
+
                 // Get column name mapping
                 String columnName = second;
                 if (entityFieldToColumnMap.containsKey(entityName) &&
