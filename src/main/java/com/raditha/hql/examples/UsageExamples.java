@@ -69,6 +69,7 @@ public class UsageExamples {
     public static void example3_PostgreSQLConversion() {
         System.out.println("=== Example 3: PostgreSQL Conversion ===");
         
+        HQLParser parser = new HQLParser();
         HQLToPostgreSQLConverter converter = new HQLToPostgreSQLConverter();
         
         // Register entity-to-table mappings
@@ -83,7 +84,8 @@ public class UsageExamples {
         String hqlQuery = "SELECT u FROM User u WHERE u.userName = :name";
         
         try {
-            String sqlQuery = converter.convert(hqlQuery);
+            QueryAnalysis analysis = parser.analyze(hqlQuery);
+            String sqlQuery = converter.convert(hqlQuery, analysis);
             System.out.println("HQL: " + hqlQuery);
             System.out.println("SQL: " + sqlQuery);
         } catch (ParseException | ConversionException e) {
@@ -121,7 +123,7 @@ public class UsageExamples {
         converter.registerFieldMapping("User", "active", "is_active");
         converter.registerFieldMapping("Order", "total", "total_amount");
 
-        String sqlQuery = converter.convert(query);
+        String sqlQuery = converter.convert(query, analysis);
         System.out.println("\nPostgreSQL: " + sqlQuery);
 
         System.out.println();
@@ -145,7 +147,7 @@ public class UsageExamples {
             QueryAnalysis analysis = parser.analyze(hqlQuery);
             System.out.println("Entities involved: " + analysis.getEntityNames());
             
-            String sqlQuery = converter.convert(hqlQuery);
+            String sqlQuery = converter.convert(hqlQuery, analysis);
             System.out.println("SQL: " + sqlQuery);
             
         } catch (ParseException | ConversionException e) {

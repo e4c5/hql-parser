@@ -2,6 +2,8 @@ package com.raditha.hql;
 
 import com.raditha.hql.converter.ConversionException;
 import com.raditha.hql.converter.HQLToPostgreSQLConverter;
+import com.raditha.hql.model.QueryAnalysis;
+import com.raditha.hql.parser.HQLParser;
 import com.raditha.hql.parser.ParseException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,10 +13,12 @@ import static org.assertj.core.api.Assertions.*;
 class PostgreSQLConverterTest {
     
     private HQLToPostgreSQLConverter converter;
+    private HQLParser parser;
     
     @BeforeEach
     void setUp() {
         converter = new HQLToPostgreSQLConverter();
+        parser = new HQLParser();
         
         // Register common mappings
         converter.registerEntityMapping("User", "users");
@@ -35,7 +39,8 @@ class PostgreSQLConverterTest {
     @Test
     void testSimpleSelect() throws ParseException, ConversionException {
         String hql = "SELECT u FROM User u";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).contains("SELECT");
         assertThat(sql).contains("FROM users u");
@@ -44,7 +49,8 @@ class PostgreSQLConverterTest {
     @Test
     void testSelectWithWhere() throws ParseException, ConversionException {
         String hql = "SELECT u FROM User u WHERE u.id = :userId";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).contains("SELECT");
         assertThat(sql).contains("FROM users u");
@@ -55,7 +61,8 @@ class PostgreSQLConverterTest {
     @Test
     void testSelectWithFieldMapping() throws ParseException, ConversionException {
         String hql = "SELECT u.userName FROM User u";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).contains("u.user_name");
     }
@@ -63,7 +70,8 @@ class PostgreSQLConverterTest {
     @Test
     void testSelectWithOrderBy() throws ParseException, ConversionException {
         String hql = "SELECT u FROM User u ORDER BY u.firstName ASC";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).contains("ORDER BY");
         assertThat(sql).contains("u.first_name");
@@ -73,7 +81,8 @@ class PostgreSQLConverterTest {
     @Test
     void testUpdateQuery() throws ParseException, ConversionException {
         String hql = "UPDATE User SET userName = :newName WHERE id = :userId";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).startsWith("UPDATE users");
         assertThat(sql).contains("SET");
@@ -83,7 +92,8 @@ class PostgreSQLConverterTest {
     @Test
     void testDeleteQuery() throws ParseException, ConversionException {
         String hql = "DELETE FROM User WHERE id = :userId";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).startsWith("DELETE FROM users");
         assertThat(sql).contains("WHERE");
@@ -92,7 +102,8 @@ class PostgreSQLConverterTest {
     @Test
     void testSelectWithJoin() throws ParseException, ConversionException {
         String hql = "SELECT u FROM User u INNER JOIN u.orders o";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).contains("INNER JOIN");
     }
@@ -100,7 +111,8 @@ class PostgreSQLConverterTest {
     @Test
     void testSelectWithGroupBy() throws ParseException, ConversionException {
         String hql = "SELECT u.country, COUNT(u) FROM User u GROUP BY u.country";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).contains("GROUP BY");
     }
@@ -108,7 +120,8 @@ class PostgreSQLConverterTest {
     @Test
     void testSelectWithHaving() throws ParseException, ConversionException {
         String hql = "SELECT u.country, COUNT(u) FROM User u GROUP BY u.country HAVING COUNT(u) > 5";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).contains("HAVING");
     }
@@ -116,7 +129,8 @@ class PostgreSQLConverterTest {
     @Test
     void testSelectDistinct() throws ParseException, ConversionException {
         String hql = "SELECT DISTINCT u.country FROM User u";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).contains("SELECT DISTINCT");
     }
@@ -128,7 +142,8 @@ class PostgreSQLConverterTest {
                     "WHERE u.active = true AND o.totalAmount > 100 " +
                     "ORDER BY o.orderDate DESC";
         
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).contains("SELECT");
         assertThat(sql).contains("u.user_name");

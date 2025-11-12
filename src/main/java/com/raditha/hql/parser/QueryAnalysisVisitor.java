@@ -177,8 +177,27 @@ public class QueryAnalysisVisitor extends HQLBaseVisitor<Void> {
     @Override
     public Void visitJoinClause(JoinClauseContext ctx) {
         if (ctx.path() != null) {
-            // The path in a join clause represents the entity being joined
-            String entityName = ctx.path().getText();
+            // The path in a join clause is like "u.orders" where u is alias, orders is collection field
+            // We need to infer the entity name from the collection field name
+            String pathText = ctx.path().getText();
+            String entityName = pathText;
+            
+            // Try to infer entity name from collection field
+            if (pathText.contains(".")) {
+                String[] parts = pathText.split("\\.");
+                if (parts.length >= 2) {
+                    String fieldName = parts[parts.length - 1];
+                    
+                    // Use heuristic to determine entity name from collection field
+                    // e.g., "orders" → "Order", "users" → "User"
+                    entityName = fieldName;
+                    if (entityName.endsWith("s") && entityName.length() > 1) {
+                        entityName = entityName.substring(0, entityName.length() - 1);
+                    }
+                    entityName = Character.toUpperCase(entityName.charAt(0)) + entityName.substring(1);
+                }
+            }
+            
             String alias = null;
             
             // Track alias if present

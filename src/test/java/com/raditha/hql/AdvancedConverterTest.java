@@ -2,6 +2,8 @@ package com.raditha.hql;
 
 import com.raditha.hql.converter.ConversionException;
 import com.raditha.hql.converter.HQLToPostgreSQLConverter;
+import com.raditha.hql.model.QueryAnalysis;
+import com.raditha.hql.parser.HQLParser;
 import com.raditha.hql.parser.ParseException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,10 +15,12 @@ import static org.assertj.core.api.Assertions.*;
 class AdvancedConverterTest {
     
     private HQLToPostgreSQLConverter converter;
+    private HQLParser parser;
     
     @BeforeEach
     void setUp() {
         converter = new HQLToPostgreSQLConverter();
+        parser = new HQLParser();
         
         // Register entity mappings
         converter.registerEntityMapping("User", "users");
@@ -58,7 +62,8 @@ class AdvancedConverterTest {
     @Test
     void testUpdateWithMultipleFields() throws ParseException, ConversionException {
         String hql = "UPDATE User SET userName = :newName, isActive = false, lastModified = CURRENT_TIMESTAMP WHERE id = :userId";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).startsWith("UPDATE users");
         assertThat(sql).contains("SET");
@@ -72,7 +77,8 @@ class AdvancedConverterTest {
     @Test
     void testUpdateWithCalculation() throws ParseException, ConversionException {
         String hql = "UPDATE Product SET unitPrice = unitPrice * 1.1 WHERE category = :category";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).startsWith("UPDATE products");
         assertThat(sql).contains("price = price * 1.1");
@@ -82,7 +88,8 @@ class AdvancedConverterTest {
     @Test
     void testUpdateWithNoWhere() throws ParseException, ConversionException {
         String hql = "UPDATE User SET isActive = false";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         // Unqualified fields DO get mapped when in UPDATE/DELETE context
         assertThat(sql).isEqualTo("UPDATE users SET active = false");
@@ -91,7 +98,8 @@ class AdvancedConverterTest {
     @Test
     void testUpdateWithBetween() throws ParseException, ConversionException {
         String hql = "UPDATE Purchase SET status = 'ARCHIVED' WHERE orderDate BETWEEN :startDate AND :endDate";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).startsWith("UPDATE purchases");
         assertThat(sql).contains("order_date BETWEEN :startDate AND :endDate");
@@ -102,7 +110,8 @@ class AdvancedConverterTest {
     @Test
     void testDeleteWithComplexWhere() throws ParseException, ConversionException {
         String hql = "DELETE FROM Purchase p WHERE p.status = 'CANCELLED' AND p.createdDate < :cutoffDate";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).startsWith("DELETE FROM purchases");
         assertThat(sql).contains("status = 'CANCELLED'");
@@ -112,7 +121,8 @@ class AdvancedConverterTest {
     @Test
     void testDeleteWithIn() throws ParseException, ConversionException {
         String hql = "DELETE FROM User u WHERE u.status IN ('INACTIVE', 'BANNED', 'DELETED')";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).startsWith("DELETE FROM users");
         assertThat(sql).contains("IN ('INACTIVE', 'BANNED', 'DELETED')");
@@ -124,7 +134,8 @@ class AdvancedConverterTest {
         "DELETE FROM Session s WHERE s.lastAccessTime IS NOT NULL, DELETE FROM sessions, last_access IS NOT NULL"
     })
     void testDeleteWithNullChecks(String hql, String expectedStart, String expectedContains) throws ParseException, ConversionException {
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).startsWith(expectedStart);
         assertThat(sql).contains(expectedContains);
@@ -136,7 +147,8 @@ class AdvancedConverterTest {
         "DELETE FROM LogEntry l WHERE l.level NOT BETWEEN 1 AND 3, DELETE FROM log_entries, level NOT BETWEEN 1 AND 3"
     })
     void testDeleteWithBetween(String hql, String expectedStart, String expectedContains) throws ParseException, ConversionException {
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).startsWith(expectedStart);
         assertThat(sql).contains(expectedContains);
@@ -151,7 +163,8 @@ class AdvancedConverterTest {
                     "INNER JOIN u.orders o " +
                     "LEFT JOIN o.products p " +
                     "WHERE u.isActive = true";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).contains("SELECT u.user_name, o.total, p.name");
         assertThat(sql).contains("FROM users u");
@@ -166,7 +179,8 @@ class AdvancedConverterTest {
         "SELECT u FROM User u LEFT OUTER JOIN u.orders o WHERE o.id IS NULL | LEFT OUTER JOIN"
     })
     void testSelectWithJoinVariants(String hql, String expectedContains) throws ParseException, ConversionException {
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         for (String expected : expectedContains.split(",")) {
             assertThat(sql).contains(expected);
@@ -176,7 +190,8 @@ class AdvancedConverterTest {
     @Test
     void testSelectWithAggregates() throws ParseException, ConversionException {
         String hql = "SELECT COUNT(u), SUM(u.salary), AVG(u.age), MAX(u.joinDate), MIN(u.joinDate) FROM User u";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).contains("COUNT(u)");
         assertThat(sql).contains("SUM(u.salary)");
@@ -188,7 +203,8 @@ class AdvancedConverterTest {
     @Test
     void testSelectWithDistinctAggregate() throws ParseException, ConversionException {
         String hql = "SELECT COUNT(DISTINCT u.country) FROM User u";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).contains("COUNT(DISTINCT u.country)");
     }
@@ -196,7 +212,8 @@ class AdvancedConverterTest {
     @Test
     void testSelectWithStringFunctions() throws ParseException, ConversionException {
         String hql = "SELECT UPPER(u.firstName), LOWER(u.lastName), LENGTH(u.email) FROM User u";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).contains("UPPER(u.first_name)");
         assertThat(sql).contains("LOWER(u.last_name)");
@@ -206,7 +223,8 @@ class AdvancedConverterTest {
     @Test
     void testSelectWithMathFunctions() throws ParseException, ConversionException {
         String hql = "SELECT ABS(p.balance), SQRT(p.amount) FROM Purchase p";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).contains("ABS(p.balance)");
         assertThat(sql).contains("SQRT(p.amount)");
@@ -215,7 +233,8 @@ class AdvancedConverterTest {
     @Test
     void testSelectWithCoalesce() throws ParseException, ConversionException {
         String hql = "SELECT COALESCE(u.nickname, u.firstName, 'Unknown') FROM User u";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).contains("COALESCE(u.nickname, u.first_name, 'Unknown')");
     }
@@ -223,7 +242,8 @@ class AdvancedConverterTest {
     @Test
     void testSelectWithOrderByMultiple() throws ParseException, ConversionException {
         String hql = "SELECT u FROM User u ORDER BY u.country ASC, u.lastName DESC";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).contains("ORDER BY u.country ASC, u.last_name DESC");
     }
@@ -234,7 +254,8 @@ class AdvancedConverterTest {
         "SELECT u FROM User u ORDER BY u.lastLogin ASC NULLS LAST, ORDER BY u.last_login_at ASC NULLS LAST"
     })
     void testSelectWithOrderByNulls(String hql, String expectedContains) throws ParseException, ConversionException {
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).contains(expectedContains);
     }
@@ -245,7 +266,8 @@ class AdvancedConverterTest {
         "SELECT u FROM User u WHERE u.emailAddress NOT LIKE '%@test.com', u.email NOT LIKE '%@test.com'"
     })
     void testSelectWithLike(String hql, String expectedContains) throws ParseException, ConversionException {
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).contains(expectedContains);
     }
@@ -253,7 +275,8 @@ class AdvancedConverterTest {
     @Test
     void testSelectWithNotIn() throws ParseException, ConversionException {
         String hql = "SELECT u FROM User u WHERE u.status NOT IN ('DELETED', 'BANNED')";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).contains("status NOT IN ('DELETED', 'BANNED')");
     }
@@ -263,7 +286,8 @@ class AdvancedConverterTest {
     @Test
     void testComplexBooleanExpression() throws ParseException, ConversionException {
         String hql = "SELECT u FROM User u WHERE (u.age > 18 AND u.country = 'US') OR (u.verified = true AND u.premium = true)";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).contains("(u.age > 18 AND u.country = 'US')");
         assertThat(sql).contains("(u.verified = true AND u.premium = true)");
@@ -273,7 +297,8 @@ class AdvancedConverterTest {
     @Test
     void testArithmeticExpressions() throws ParseException, ConversionException {
         String hql = "SELECT u FROM User u WHERE u.salary * 12 > 100000 AND u.bonus + u.commission > 10000";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).contains("u.salary * 12 > 100000");
         assertThat(sql).contains("u.bonus + u.commission > 10000");
@@ -282,7 +307,8 @@ class AdvancedConverterTest {
     @Test
     void testNotExpression() throws ParseException, ConversionException {
         String hql = "SELECT u FROM User u WHERE NOT u.deleted";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).contains("NOT u.deleted");
     }
@@ -290,7 +316,8 @@ class AdvancedConverterTest {
     @Test
     void testParenthesizedExpression() throws ParseException, ConversionException {
         String hql = "SELECT u FROM User u WHERE (u.age + 5) * 2 > 50";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).contains("(u.age + 5) * 2 > 50");
     }
@@ -304,7 +331,8 @@ class AdvancedConverterTest {
         "UPDATE User SET lastModified = CURRENT_TIMESTAMP WHERE id = :id, CURRENT_TIMESTAMP"
     })
     void testCurrentDateTimeFunctions(String hql, String expectedContains) throws ParseException, ConversionException {
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).contains(expectedContains);
     }
@@ -317,7 +345,8 @@ class AdvancedConverterTest {
         "SELECT u FROM User u WHERE u.userName = ?1 AND u.age > ?2 | ?1,?2"
     })
     void testParameters(String hql, String expectedParams) throws ParseException, ConversionException {
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         for (String param : expectedParams.split(",")) {
             assertThat(sql).contains(param);
@@ -329,7 +358,8 @@ class AdvancedConverterTest {
     @Test
     void testSelectWithAlias() throws ParseException, ConversionException {
         String hql = "SELECT u.userName AS username, u.emailAddress AS email FROM User u";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).contains("u.user_name AS username");
         assertThat(sql).contains("u.email AS email");
@@ -338,7 +368,8 @@ class AdvancedConverterTest {
     @Test
     void testUnmappedEntity() throws ParseException, ConversionException {
         String hql = "SELECT c FROM Customer c";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         // Should use lowercase fallback
         assertThat(sql).contains("FROM customer c");
@@ -347,7 +378,8 @@ class AdvancedConverterTest {
     @Test
     void testUnmappedField() throws ParseException, ConversionException {
         String hql = "SELECT u.unknownField FROM User u";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         // Should keep field name as-is
         assertThat(sql).contains("u.unknownField");
@@ -356,7 +388,8 @@ class AdvancedConverterTest {
     @Test
     void testGroupByWithHaving() throws ParseException, ConversionException {
         String hql = "SELECT u.country, COUNT(u) FROM User u GROUP BY u.country HAVING COUNT(u) > 5";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).contains("GROUP BY u.country");
         assertThat(sql).contains("HAVING COUNT(u) > 5");
@@ -365,7 +398,8 @@ class AdvancedConverterTest {
     @Test
     void testComparisonOperators() throws ParseException, ConversionException {
         String hql = "SELECT u FROM User u WHERE u.age >= 18 AND u.age <= 65 AND u.status != 'INACTIVE'";
-        String sql = converter.convert(hql);
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
         
         assertThat(sql).contains("u.age >= 18");
         assertThat(sql).contains("u.age <= 65");

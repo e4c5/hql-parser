@@ -4,7 +4,7 @@ import com.raditha.hql.grammar.HQLBaseVisitor;
 import com.raditha.hql.grammar.HQLLexer;
 import com.raditha.hql.grammar.HQLParser;
 import com.raditha.hql.grammar.HQLParser.*;
-import com.raditha.hql.parser.ParseException;
+import com.raditha.hql.model.QueryAnalysis;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.ParseTree;
 
@@ -12,7 +12,7 @@ import java.util.*;
 
 /**
  * Converts HQL/JPQL queries to PostgreSQL SQL queries.
- * Requires entity-to-table mapping configuration.
+ * Uses QueryAnalysis for entity-to-table mapping information.
  */
 public class HQLToPostgreSQLConverter {
     
@@ -48,39 +48,35 @@ public class HQLToPostgreSQLConverter {
     }
     
     /**
-     * Converts an HQL/JPQL query to PostgreSQL SQL.
+     * Converts an HQL/JPQL query to PostgreSQL SQL using QueryAnalysis.
      * 
      * @param hqlQuery The HQL/JPQL query string
+     * @param analysis The QueryAnalysis containing entity and alias information
      * @return The converted PostgreSQL SQL query
-     * @throws ParseException if the query cannot be parsed
      * @throws ConversionException if the query cannot be converted
      */
-    public String convert(String hqlQuery) throws ParseException, ConversionException {
-        try {
-            CharStream input = CharStreams.fromString(hqlQuery);
-            HQLLexer lexer = new HQLLexer(input);
-            CommonTokenStream tokens = new CommonTokenStream(lexer);
-            HQLParser parser = new HQLParser(tokens);
-            
-            parser.removeErrorListeners();
-            parser.addErrorListener(new BaseErrorListener() {
-                @Override
-                public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol,
-                                       int line, int charPositionInLine, String msg, RecognitionException e) {
-                    throw new RuntimeException("Parse error at " + line + ":" + charPositionInLine + " " + msg);
-                }
-            });
-            
-            ParseTree tree = parser.statement();
-            
-            PostgreSQLConversionVisitor visitor = new PostgreSQLConversionVisitor(
-                entityToTableMap, entityFieldToColumnMap
-            );
-            
-            return visitor.visit(tree);
-        } catch (Exception e) {
-            throw new ConversionException("Failed to convert HQL to PostgreSQL: " + e.getMessage(), e);
-        }
+    public String convert(String hqlQuery, com.raditha.hql.model.QueryAnalysis analysis) throws ConversionException {
+        CharStream input = CharStreams.fromString(hqlQuery);
+        HQLLexer lexer = new HQLLexer(input);
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        HQLParser parser = new HQLParser(tokens);
+        
+        parser.removeErrorListeners();
+        parser.addErrorListener(new BaseErrorListener() {
+            @Override
+            public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol,
+                                   int line, int charPositionInLine, String msg, RecognitionException e) {
+                throw new RuntimeException("Parse error at " + line + ":" + charPositionInLine + " " + msg);
+            }
+        });
+        
+        ParseTree tree = parser.statement();
+        
+        PostgreSQLConversionVisitor visitor = new PostgreSQLConversionVisitor(
+            entityToTableMap, entityFieldToColumnMap, analysis
+        );
+        
+        return visitor.visit(tree);
     }
     
     /**
@@ -93,10 +89,16 @@ public class HQLToPostgreSQLConverter {
         private final Map<String, String> aliasToEntity = new HashMap<>();
         private String currentEntity = null;  // For UPDATE/DELETE without alias
         
+        private final QueryAnalysis analysis;
+        
         public PostgreSQLConversionVisitor(Map<String, String> entityToTableMap,
-                                          Map<String, Map<String, String>> entityFieldToColumnMap) {
+                                          Map<String, Map<String, String>> entityFieldToColumnMap,
+                                          QueryAnalysis analysis) {
             this.entityToTableMap = entityToTableMap;
             this.entityFieldToColumnMap = entityFieldToColumnMap;
+            this.analysis = analysis;
+            // Initialize aliasToEntity from QueryAnalysis
+            this.aliasToEntity.putAll(analysis.getAliasToEntity());
         }
         
         @Override
@@ -188,10 +190,8 @@ public class HQLToPostgreSQLConverter {
             if (ctx.identifier() != null) {
                 String alias = ctx.identifier().getText();
                 sql.append(" ").append(alias);
-                aliasToEntity.put(alias, entityName);
             }
             
-            // Handle joins
             if (ctx.joinClause() != null && !ctx.joinClause().isEmpty()) {
                 for (JoinClauseContext join : ctx.joinClause()) {
                     sql.append(" ");
@@ -212,62 +212,16 @@ public class HQLToPostgreSQLConverter {
             
             sql.append("JOIN");
             
-            // Note: FETCH is ignored in SQL conversion
-            
-            // In HQL, joins are like "u.orders o" where u is alias, orders is collection field
-            // In SQL, we need to convert this to the actual table name
-            String pathText = ctx.path().getText();
-            String fieldName = null;
-            String tableName = null;
-            String joinEntityName = null;
-            
-            if (pathText.contains(".")) {
-                String[] parts = pathText.split("\\.");
-                if (parts.length >= 2) {
-                    fieldName = parts[parts.length - 1];
-                    
-                    // Use heuristic to determine entity name from collection field
-                    // e.g., "orders" → "Order", "users" → "User"
-                    joinEntityName = fieldName;
-                    if (joinEntityName.endsWith("s") && joinEntityName.length() > 1) {
-                        joinEntityName = joinEntityName.substring(0, joinEntityName.length() - 1);
-                    }
-                    joinEntityName = Character.toUpperCase(joinEntityName.charAt(0)) + joinEntityName.substring(1);
-                    
-                    // Get the table name for this entity
-                    if (entityToTableMap.containsKey(joinEntityName)) {
-                        tableName = entityToTableMap.get(joinEntityName);
-                    } else {
-                        // Fallback: lowercase the field name
-                        tableName = fieldName.toLowerCase();
-                    }
-                }
-            }
-            
-            // If we couldn't parse it, just use the path as-is (shouldn't happen normally)
-            if (tableName == null) {
-                tableName = pathText;
-            }
+            String joinAlias = ctx.identifier().getText();
+            String joinEntityName = analysis.getEntityForAlias(joinAlias);
+            String tableName = entityToTableMap.getOrDefault(joinEntityName, joinEntityName.toLowerCase());
             
             sql.append(" ").append(tableName);
-            
-            if (ctx.identifier() != null) {
-                String joinAlias = ctx.identifier().getText();
-                sql.append(" ").append(joinAlias);
-                
-                // Register the alias to entity mapping
-                if (joinEntityName != null && (entityToTableMap.containsKey(joinEntityName) || entityFieldToColumnMap.containsKey(joinEntityName))) {
-                    aliasToEntity.put(joinAlias, joinEntityName);
-                }
-            }
+            sql.append(" ").append(joinAlias);
             
             if (ctx.expression() != null) {
                 sql.append(" ON ").append(visit(ctx.expression()));
             }
-            // Note: HQL allows implicit joins without ON clause (uses JPA metadata)
-            // For SQL conversion, we'd need to generate the ON clause, but that requires
-            // knowing the foreign key relationships. For now, we leave it as-is.
-            // In practice, users should provide explicit ON clauses or this is a limitation.
             
             return sql.toString();
         }
@@ -331,7 +285,6 @@ public class HQLToPostgreSQLConverter {
             String entityName = ctx.entityName().getText();
             String tableName = entityToTableMap.getOrDefault(entityName, entityName.toLowerCase());
             
-            // Track current entity for unqualified field mapping
             currentEntity = entityName;
             
             StringBuilder sql = new StringBuilder("UPDATE ");
@@ -344,7 +297,7 @@ public class HQLToPostgreSQLConverter {
                 sql.append(visit(ctx.whereClause()));
             }
             
-            currentEntity = null;  // Clear context
+            currentEntity = null;
             
             return sql.toString();
         }
@@ -354,14 +307,7 @@ public class HQLToPostgreSQLConverter {
             String entityName = ctx.entityName().getText();
             String tableName = entityToTableMap.getOrDefault(entityName, entityName.toLowerCase());
             
-            // Track current entity for unqualified field mapping
             currentEntity = entityName;
-            
-            // Track alias if present (for qualified field references in WHERE clause)
-            if (ctx.identifier() != null) {
-                String alias = ctx.identifier().getText();
-                aliasToEntity.put(alias, entityName);
-            }
             
             StringBuilder sql = new StringBuilder("DELETE FROM ");
             sql.append(tableName);
@@ -371,11 +317,7 @@ public class HQLToPostgreSQLConverter {
                 sql.append(visit(ctx.whereClause()));
             }
             
-            // Clear context
             currentEntity = null;
-            if (ctx.identifier() != null) {
-                aliasToEntity.remove(ctx.identifier().getText());
-            }
             
             return sql.toString();
         }
