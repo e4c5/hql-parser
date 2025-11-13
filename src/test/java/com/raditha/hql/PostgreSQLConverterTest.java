@@ -189,10 +189,10 @@ class PostgreSQLConverterTest {
     @Test
     void testComplexCommissionQueryWithCaseExpressions() throws ParseException, ConversionException {
         String hql = "SELECT SUM(CASE WHEN c.remainingCommission > 0 THEN COALESCE(c.remainingCommission, 0) ELSE 0 END), " +
-                    "SUM(CASE WHEN c.totalCommission > 0 THEN COALESCE(c.totalCommission, 0) ELSE 0 END) " +
-                    "FROM PropertyListing pl LEFT JOIN Commission c ON pl.id = c.propertyListingId " +
-                    "WHERE pl.agentId = :agentId AND c.brokerageId = :brokerageId AND c.contractId = :contractId " +
-                    "AND c.isActive = true AND c.isDeleted = false";
+                "SUM(CASE WHEN c.totalCommission > 0 THEN COALESCE(c.totalCommission, 0) ELSE 0 END) " +
+                "FROM PropertyListing pl LEFT JOIN Commission c ON pl.id = c.propertyListingId " +
+                "WHERE pl.agentId = :agentId AND c.brokerageId = :brokerageId AND c.contractId = :contractId " +
+                "AND c.isActive = true AND c.isDeleted = false";
 
         QueryAnalysis analysis = parser.analyze(hql);
         System.out.println("Query Analysis: " + analysis);
