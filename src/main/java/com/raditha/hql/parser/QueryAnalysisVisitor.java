@@ -65,14 +65,30 @@ public class QueryAnalysisVisitor extends HQLBaseVisitor<Void> {
         // Get the entity being updated
         if (ctx.entityName() != null) {
             currentEntity = ctx.entityName().getText();
+            String alias = null;
+
+            // Track alias if present
+            if (ctx.identifier() != null) {
+                alias = ctx.identifier().getText();
+                aliasToEntity.put(alias, currentEntity);
+            }
+
+            analysis.addEntity(currentEntity, alias);
+        }
+
+        // Visit SET clause and WHERE clause
+        if (ctx.setClause() != null) {
+            visit(ctx.setClause());
         }
         
-        Void result = visitChildren(ctx);
-        
+        if (ctx.whereClause() != null) {
+            visit(ctx.whereClause());
+        }
+
         inUpdateStatement = false;
         currentEntity = null;
         
-        return result;
+        return null;
     }
     
     @Override

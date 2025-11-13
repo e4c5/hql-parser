@@ -13,7 +13,7 @@ selectStatement
     ;
 
 updateStatement
-    : UPDATE entityName setClause whereClause?
+    : UPDATE entityName (AS? identifier)? setClause whereClause?
     ;
 
 deleteStatement

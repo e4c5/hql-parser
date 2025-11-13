@@ -24,7 +24,8 @@ class PostgreSQLConverterTest {
         converter.registerEntityMapping("User", "users");
         converter.registerEntityMapping("Order", "orders");
         converter.registerEntityMapping("Product", "products");
-        
+        converter.registerEntityMapping("Postage", "postage");
+
         converter.registerFieldMapping("User", "userName", "user_name");
         converter.registerFieldMapping("User", "firstName", "first_name");
         converter.registerFieldMapping("User", "lastName", "last_name");
@@ -34,6 +35,10 @@ class PostgreSQLConverterTest {
         converter.registerFieldMapping("Order", "totalAmount", "total");
         
         converter.registerFieldMapping("Product", "productName", "name");
+
+        converter.registerFieldMapping("Postage", "isDeleted", "is_deleted");
+        converter.registerFieldMapping("Postage", "isActive", "is_active");
+        converter.registerFieldMapping("Postage", "postalCode", "postal_code");
     }
     
     @Test
@@ -152,5 +157,20 @@ class PostgreSQLConverterTest {
         assertThat(sql).contains("WHERE");
         assertThat(sql).contains("ORDER BY");
         assertThat(sql).contains("DESC");
+    }
+
+    @Test
+    void testUpdateQueryWithAliasAndMultipleSetClauses() throws ParseException, ConversionException {
+        String hql = "update Postage p set p.isDeleted = true, p.isActive = false where p.postalCode = ?1";
+        QueryAnalysis analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
+
+        assertThat(sql).startsWith("UPDATE postage p");
+        assertThat(sql).contains("SET");
+        assertThat(sql).contains("is_deleted");
+        assertThat(sql).contains("is_active");
+        assertThat(sql).contains("WHERE");
+        assertThat(sql).contains("postal_code");
+        assertThat(sql).contains("?1");
     }
 }
