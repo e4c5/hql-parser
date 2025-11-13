@@ -25,6 +25,8 @@ class PostgreSQLConverterTest {
         converter.registerEntityMapping("Order", "orders");
         converter.registerEntityMapping("Product", "products");
         converter.registerEntityMapping("Postage", "postage");
+        converter.registerEntityMapping("PropertyListing", "property_listing");
+        converter.registerEntityMapping("Commission", "commission");
 
         converter.registerFieldMapping("User", "userName", "user_name");
         converter.registerFieldMapping("User", "firstName", "first_name");
@@ -39,6 +41,16 @@ class PostgreSQLConverterTest {
         converter.registerFieldMapping("Postage", "isDeleted", "is_deleted");
         converter.registerFieldMapping("Postage", "isActive", "is_active");
         converter.registerFieldMapping("Postage", "postalCode", "postal_code");
+
+        converter.registerFieldMapping("PropertyListing", "agentId", "agent_id");
+
+        converter.registerFieldMapping("Commission", "propertyListingId", "property_listing_id");
+        converter.registerFieldMapping("Commission", "brokerageId", "brokerage_id");
+        converter.registerFieldMapping("Commission", "contractId", "contract_id");
+        converter.registerFieldMapping("Commission", "isActive", "is_active");
+        converter.registerFieldMapping("Commission", "isDeleted", "is_deleted");
+        converter.registerFieldMapping("Commission", "remainingCommission", "remaining_commission");
+        converter.registerFieldMapping("Commission", "totalCommission", "total_commission");
     }
     
     @Test
@@ -172,5 +184,29 @@ class PostgreSQLConverterTest {
         assertThat(sql).contains("WHERE");
         assertThat(sql).contains("postal_code");
         assertThat(sql).contains("?1");
+    }
+
+    @Test
+    void testComplexCommissionQueryWithCaseExpressions() throws ParseException, ConversionException {
+        String hql = "SELECT SUM(CASE WHEN c.remainingCommission > 0 THEN COALESCE(c.remainingCommission, 0) ELSE 0 END), " +
+                    "SUM(CASE WHEN c.totalCommission > 0 THEN COALESCE(c.totalCommission, 0) ELSE 0 END) " +
+                    "FROM PropertyListing pl LEFT JOIN Commission c ON pl.id = c.propertyListingId " +
+                    "WHERE pl.agentId = :agentId AND c.brokerageId = :brokerageId AND c.contractId = :contractId " +
+                    "AND c.isActive = true AND c.isDeleted = false";
+
+        QueryAnalysis analysis = parser.analyze(hql);
+        System.out.println("Query Analysis: " + analysis);
+        String sql = converter.convert(hql, analysis);
+        System.out.println("Converted SQL: " + sql);
+
+        assertThat(sql).contains("SELECT");
+        assertThat(sql).contains("SUM(CASE WHEN");
+        assertThat(sql).contains("ELSE 0 END");
+        assertThat(sql).contains("COALESCE");
+        assertThat(sql).contains("remaining_commission");
+        assertThat(sql).contains("total_commission");
+        assertThat(sql).contains("FROM property_listing pl");
+        assertThat(sql).contains("LEFT JOIN commission c");
+        assertThat(sql).contains("WHERE");
     }
 }

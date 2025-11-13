@@ -563,19 +563,34 @@ public class HQLToPostgreSQLConverter {
         public String visitCaseExpression(CaseExpressionContext ctx) {
             StringBuilder sb = new StringBuilder("CASE");
             List<ExpressionContext> expressions = ctx.expression();
-            if (expressions != null && !expressions.isEmpty()) {
-                sb.append(" ").append(visit(expressions.get(0)));
+            int whenClauseCount = ctx.whenClause().size();
+
+            // Determine if this is a simple CASE (CASE expr WHEN...) or searched CASE (CASE WHEN...)
+            // Simple CASE has: 1 initial expr + (2 * whenClauseCount) + (ELSE ? 1 : 0)
+            // Searched CASE has: (2 * whenClauseCount) + (ELSE ? 1 : 0)
+            int expectedSearchedCaseExprs = whenClauseCount * 2 + (ctx.ELSE() != null ? 1 : 0);
+            int expectedSimpleCaseExprs = 1 + whenClauseCount * 2 + (ctx.ELSE() != null ? 1 : 0);
+
+            boolean isSimpleCase = (expressions != null && expressions.size() == expectedSimpleCaseExprs);
+            int exprIndex = 0;
+
+            // For simple CASE, add the initial expression
+            if (isSimpleCase && expressions != null && !expressions.isEmpty()) {
+                sb.append(" ").append(visit(expressions.get(exprIndex++)));
             }
+
+            // Add WHEN clauses - but since whenClause visitor handles its own expressions,
+            // we just visit each whenClause
             for (WhenClauseContext when : ctx.whenClause()) {
                 sb.append(" ").append(visit(when));
             }
-            if (ctx.ELSE() != null) {
-                int exprIndex = expressions != null && !expressions.isEmpty() ? 
-                    ctx.whenClause().size() + 1 : ctx.whenClause().size();
-                if (exprIndex < expressions.size()) {
-                    sb.append(" ELSE ").append(visit(expressions.get(exprIndex)));
-                }
+
+            // Add ELSE clause if present
+            if (ctx.ELSE() != null && expressions != null) {
+                // The ELSE expression is the last one in the list
+                sb.append(" ELSE ").append(visit(expressions.get(expressions.size() - 1)));
             }
+
             sb.append(" END");
             return sb.toString();
         }
