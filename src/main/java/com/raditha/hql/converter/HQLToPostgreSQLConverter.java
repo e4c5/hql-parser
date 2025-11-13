@@ -283,9 +283,16 @@ public class HQLToPostgreSQLConverter {
             String tableName = entityToTableMap.getOrDefault(entityName, entityName.toLowerCase());
             
             currentEntity = entityName;
-            
+
             StringBuilder sql = new StringBuilder("UPDATE ");
             sql.append(tableName);
+
+            // Include alias if present (required for PostgreSQL when using qualified column references)
+            if (ctx.identifier() != null) {
+                sql.append(" ");
+                sql.append(ctx.identifier().getText());
+            }
+
             sql.append(" ");
             sql.append(visit(ctx.setClause()));
             
