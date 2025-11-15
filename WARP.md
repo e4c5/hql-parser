@@ -81,8 +81,8 @@ If IntelliJ shows "Cannot find symbol: HQLLexer" errors:
 ### Design Patterns
 
 - **Visitor Pattern**: Used extensively for both query analysis and SQL conversion
-- **Builder Pattern**: `QueryAnalysis` accumulates data via add methods
-- **Factory Pattern**: `HQLParser.analyze()` creates `QueryAnalysis` instances
+- **Builder Pattern**: `MetaData` accumulates data via add methods during analysis
+- **Factory Pattern**: `HQLParser.analyze()` creates `MetaData` instances
 - **Error Handling**: Custom error listeners capture parse errors without throwing immediately
 
 ### Data Flow
