@@ -1,7 +1,7 @@
 package com.raditha.hql.parser;
 
 import com.raditha.hql.grammar.HQLLexer;
-import com.raditha.hql.model.QueryAnalysis;
+import com.raditha.hql.model.MetaData;
 import com.raditha.hql.model.QueryType;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -50,12 +50,12 @@ public class HQLParser {
      * @return QueryAnalysis object containing the analysis results
      * @throws ParseException if the query is syntactically invalid
      */
-    public QueryAnalysis analyze(String query) throws ParseException {
+    public MetaData analyze(String query) throws ParseException {
         ParseTree tree = parse(query);
         
         // Determine query type
         QueryType queryType = determineQueryType(tree);
-        QueryAnalysis analysis = new QueryAnalysis(query, queryType);
+        MetaData analysis = new MetaData(query, queryType);
         
         // Walk the parse tree to extract information
         QueryAnalysisVisitor visitor = new QueryAnalysisVisitor(analysis);

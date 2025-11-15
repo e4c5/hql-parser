@@ -4,7 +4,7 @@ import com.raditha.hql.grammar.HQLBaseVisitor;
 import com.raditha.hql.grammar.HQLLexer;
 import com.raditha.hql.grammar.HQLParser;
 import com.raditha.hql.grammar.HQLParser.*;
-import com.raditha.hql.model.QueryAnalysis;
+import com.raditha.hql.model.MetaData;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.ParseTree;
 
@@ -55,7 +55,7 @@ public class HQLToPostgreSQLConverter {
      * @return The converted PostgreSQL SQL query
      * @throws ConversionException if the query cannot be converted
      */
-    public String convert(String hqlQuery, com.raditha.hql.model.QueryAnalysis analysis) throws ConversionException {
+    public String convert(String hqlQuery, MetaData analysis) throws ConversionException {
         CharStream input = CharStreams.fromString(hqlQuery);
         HQLLexer lexer = new HQLLexer(input);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
@@ -88,11 +88,11 @@ public class HQLToPostgreSQLConverter {
         private final Map<String, Map<String, String>> entityFieldToColumnMap;
         private String currentEntity = null;  // For UPDATE/DELETE without alias
         
-        private final QueryAnalysis analysis;
+        private final MetaData analysis;
         
         public PostgreSQLConversionVisitor(Map<String, String> entityToTableMap,
                                           Map<String, Map<String, String>> entityFieldToColumnMap,
-                                          QueryAnalysis analysis) {
+                                          MetaData analysis) {
             this.entityToTableMap = entityToTableMap;
             this.entityFieldToColumnMap = entityFieldToColumnMap;
             this.analysis = analysis;

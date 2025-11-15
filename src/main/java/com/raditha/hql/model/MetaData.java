@@ -5,7 +5,7 @@ import java.util.*;
 /**
  * Represents the analysis result of an HQL/JPQL query.
  */
-public class QueryAnalysis {
+public class MetaData {
     private final String originalQuery;
     private final QueryType queryType;
     private final Set<String> entityNames;
@@ -13,7 +13,7 @@ public class QueryAnalysis {
     private final Map<String, Set<String>> entityFields; // entity -> fields
     private final Set<String> parameters;
     
-    public QueryAnalysis(String originalQuery, QueryType queryType) {
+    public MetaData(String originalQuery, QueryType queryType) {
         this.originalQuery = originalQuery;
         this.queryType = queryType;
         this.entityNames = new LinkedHashSet<>();

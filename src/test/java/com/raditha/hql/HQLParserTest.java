@@ -1,6 +1,6 @@
 package com.raditha.hql;
 
-import com.raditha.hql.model.QueryAnalysis;
+import com.raditha.hql.model.MetaData;
 import com.raditha.hql.model.QueryType;
 import com.raditha.hql.parser.HQLParser;
 import com.raditha.hql.parser.ParseException;
@@ -22,7 +22,7 @@ class HQLParserTest {
     void testSimpleSelectQuery() throws ParseException {
         String query = "SELECT u FROM User u";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
         assertThat(analysis.getEntityNames()).contains("User");
@@ -33,7 +33,7 @@ class HQLParserTest {
     void testSelectWithWhere() throws ParseException {
         String query = "SELECT u FROM User u WHERE u.age > 18";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
         assertThat(analysis.getEntityNames()).contains("User");
@@ -44,7 +44,7 @@ class HQLParserTest {
     void testSelectWithNamedParameter() throws ParseException {
         String query = "SELECT u FROM User u WHERE u.name = :userName";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getParameters()).contains("userName");
         assertThat(analysis.getEntityFields().get("User")).contains("name");
@@ -54,7 +54,7 @@ class HQLParserTest {
     void testSelectWithPositionalParameter() throws ParseException {
         String query = "SELECT u FROM User u WHERE u.id = ?1";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getParameters()).contains("?1");
     }
@@ -63,7 +63,7 @@ class HQLParserTest {
     void testSelectWithMultipleFields() throws ParseException {
         String query = "SELECT u.name, u.email, u.age FROM User u";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getEntityFields().get("User"))
             .contains("name", "email", "age");
@@ -73,7 +73,7 @@ class HQLParserTest {
     void testSelectWithJoin() throws ParseException {
         String query = "SELECT u FROM User u INNER JOIN u.orders o WHERE o.total > 100";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getEntityNames()).contains("User");
         assertThat(analysis.getAliases()).contains("u", "o");
@@ -83,7 +83,7 @@ class HQLParserTest {
     void testSelectWithOrderBy() throws ParseException {
         String query = "SELECT u FROM User u ORDER BY u.name ASC";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
         assertThat(analysis.getEntityFields().get("User")).contains("name");
@@ -93,7 +93,7 @@ class HQLParserTest {
     void testSelectWithGroupBy() throws ParseException {
         String query = "SELECT u.status, COUNT(u) FROM User u GROUP BY u.status";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getEntityFields().get("User")).contains("status");
     }
@@ -102,7 +102,7 @@ class HQLParserTest {
     void testUpdateQuery() throws ParseException {
         String query = "UPDATE User SET active = false WHERE id = :userId";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.UPDATE);
         assertThat(analysis.getEntityNames()).contains("User");
@@ -113,7 +113,7 @@ class HQLParserTest {
     void testDeleteQuery() throws ParseException {
         String query = "DELETE FROM User WHERE age < 18";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.DELETE);
         assertThat(analysis.getEntityNames()).contains("User");
@@ -127,7 +127,7 @@ class HQLParserTest {
                       "WHERE u.active = true AND o.total > :minTotal " +
                       "ORDER BY o.orderDate DESC";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
         assertThat(analysis.getEntityNames()).contains("User");
@@ -153,7 +153,7 @@ class HQLParserTest {
     void testDistinctQuery() throws ParseException {
         String query = "SELECT DISTINCT u.country FROM User u";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
         assertThat(analysis.getEntityFields().get("User")).contains("country");
@@ -163,7 +163,7 @@ class HQLParserTest {
     void testQueryWithBetween() throws ParseException {
         String query = "SELECT u FROM User u WHERE u.age BETWEEN 18 AND 65";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getEntityFields().get("User")).contains("age");
     }
@@ -172,7 +172,7 @@ class HQLParserTest {
     void testQueryWithIn() throws ParseException {
         String query = "SELECT u FROM User u WHERE u.status IN ('ACTIVE', 'PENDING')";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getEntityFields().get("User")).contains("status");
     }
@@ -181,7 +181,7 @@ class HQLParserTest {
     void testQueryWithLike() throws ParseException {
         String query = "SELECT u FROM User u WHERE u.name LIKE :pattern";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getEntityFields().get("User")).contains("name");
         assertThat(analysis.getParameters()).contains("pattern");

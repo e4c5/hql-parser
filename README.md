@@ -67,18 +67,26 @@ Extract entities, fields, and parameters from HQL queries:
 
 ```java
 import com.raditha.hql.parser.HQLParser;
-import com.raditha.hql.model.QueryAnalysis;
+import com.raditha.hql.model.MetaData;
 
 HQLParser parser = new HQLParser();
 
 String query = "SELECT u.name, u.email FROM User u WHERE u.active = true AND u.age > :minAge";
 
-QueryAnalysis analysis = parser.analyze(query);
+MetaData analysis = parser.analyze(query);
 
-System.out.println("Query Type: " + analysis.getQueryType());
-System.out.println("Entities: " + analysis.getEntityNames());
-System.out.println("Fields: " + analysis.getEntityFields());
-System.out.println("Parameters: " + analysis.getParameters());
+System.out.
+
+println("Query Type: "+analysis.getQueryType());
+        System.out.
+
+println("Entities: "+analysis.getEntityNames());
+        System.out.
+
+println("Fields: "+analysis.getEntityFields());
+        System.out.
+
+println("Parameters: "+analysis.getParameters());
 ```
 
 **Output:**

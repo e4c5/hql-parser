@@ -1,6 +1,6 @@
 package com.raditha.hql;
 
-import com.raditha.hql.model.QueryAnalysis;
+import com.raditha.hql.model.MetaData;
 import com.raditha.hql.parser.HQLParser;
 import com.raditha.hql.parser.ParseException;
 import org.junit.jupiter.api.Test;
@@ -20,7 +20,7 @@ public class JoinAnalysisTest {
                 "AND oc.isActive = true AND oc.isDeleted = false " +
                 "AND oc.payerGroupId = :payerGroupId AND oc.payerContractId = :payerContractId";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         System.out.println("=== Query Analysis ===");
         System.out.println(analysis);
@@ -71,7 +71,7 @@ public class JoinAnalysisTest {
                 "LEFT JOIN u.projects p " +
                 "WHERE u.active = true";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         // Should have User entity and aliases for all three
         assertTrue(analysis.getEntityNames().contains("User"));
@@ -88,7 +88,7 @@ public class JoinAnalysisTest {
     public void testJoinWithoutAlias() throws ParseException {
         String query = "SELECT e FROM Employee e JOIN e.department WHERE e.salary > 50000";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertTrue(analysis.getEntityNames().contains("Employee"));
         assertEquals(1, analysis.getAliases().size());

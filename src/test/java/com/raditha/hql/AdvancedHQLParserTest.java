@@ -1,6 +1,6 @@
 package com.raditha.hql;
 
-import com.raditha.hql.model.QueryAnalysis;
+import com.raditha.hql.model.MetaData;
 import com.raditha.hql.model.QueryType;
 import com.raditha.hql.parser.HQLParser;
 import com.raditha.hql.parser.ParseException;
@@ -24,7 +24,7 @@ class AdvancedHQLParserTest {
     void testUpdateWithMultipleFields() throws ParseException {
         String query = "UPDATE User SET name = :newName, email = :newEmail, lastModified = CURRENT_TIMESTAMP WHERE id = :userId";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.UPDATE);
         assertThat(analysis.getEntityNames()).contains("User");
@@ -36,7 +36,7 @@ class AdvancedHQLParserTest {
     void testUpdateWithSubquery() throws ParseException {
         String query = "UPDATE User SET status = :newStatus WHERE id IN (SELECT o.userId FROM Purchase o WHERE o.total > :minTotal)";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.UPDATE);
         assertThat(analysis.getEntityNames()).contains("User");
@@ -47,7 +47,7 @@ class AdvancedHQLParserTest {
     void testUpdateWithCalculation() throws ParseException {
         String query = "UPDATE Product SET price = price * 1.1 WHERE category = :category";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.UPDATE);
         assertThat(analysis.getEntityFields().get("Product")).contains("price", "category");
@@ -63,7 +63,7 @@ class AdvancedHQLParserTest {
     void testDeleteWithComplexWhere() throws ParseException {
         String query = "DELETE FROM Purchase p WHERE p.status = 'CANCELLED' AND p.createdDate < :cutoffDate";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.DELETE);
         assertThat(analysis.getEntityNames()).contains("Purchase");
@@ -75,7 +75,7 @@ class AdvancedHQLParserTest {
     void testDeleteWithIn() throws ParseException {
         String query = "DELETE FROM User u WHERE u.status IN ('INACTIVE', 'BANNED', 'DELETED')";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.DELETE);
         assertThat(analysis.getEntityNames()).contains("User");
@@ -87,7 +87,7 @@ class AdvancedHQLParserTest {
     void testDeleteWithBetween() throws ParseException {
         String query = "DELETE FROM LogEntry WHERE timestamp BETWEEN :startDate AND :endDate";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.DELETE);
         assertThat(analysis.getEntityNames()).contains("LogEntry");
@@ -98,7 +98,7 @@ class AdvancedHQLParserTest {
     void testDeleteWithIsNull() throws ParseException {
         String query = "DELETE FROM Session s WHERE s.lastAccessTime IS NULL";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.DELETE);
         assertThat(analysis.getEntityNames()).contains("Session");
@@ -115,7 +115,7 @@ class AdvancedHQLParserTest {
                       "LEFT JOIN o.products p " +
                       "WHERE u.active = true";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
         assertThat(analysis.getAliases()).contains("u", "o", "p");
@@ -128,7 +128,7 @@ class AdvancedHQLParserTest {
                       "GROUP BY u.country " +
                       "HAVING COUNT(u) > 10";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
         assertThat(analysis.getEntityFields().get("User")).contains("country", "age", "salary", "joinDate");
@@ -138,7 +138,7 @@ class AdvancedHQLParserTest {
     void testSelectWithSubquery() throws ParseException {
         String query = "SELECT u FROM User u WHERE u.salary > (SELECT AVG(u2.salary) FROM User u2 WHERE u2.department = u.department)";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
         assertThat(analysis.getEntityNames()).contains("User");
@@ -153,7 +153,7 @@ class AdvancedHQLParserTest {
                       "ELSE 'Senior' END " +
                       "FROM User u";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
         assertThat(analysis.getEntityFields().get("User")).contains("name", "age");
@@ -164,7 +164,7 @@ class AdvancedHQLParserTest {
         String query = "SELECT UPPER(u.name), LOWER(u.email), LENGTH(u.phone), CONCAT(u.firstName, ' ', u.lastName) " +
                       "FROM User u";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
         assertThat(analysis.getEntityFields().get("User")).containsAnyOf("name", "email", "phone", "firstName", "lastName");
@@ -174,7 +174,7 @@ class AdvancedHQLParserTest {
     void testSelectWithMathFunctions() throws ParseException {
         String query = "SELECT ABS(p.balance), SQRT(p.amount), MOD(p.quantity, 10) FROM Purchase p";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
         assertThat(analysis.getEntityNames()).contains("Purchase");
@@ -184,7 +184,7 @@ class AdvancedHQLParserTest {
     void testSelectWithCoalesce() throws ParseException {
         String query = "SELECT COALESCE(u.nickname, u.firstName, 'Anonymous') FROM User u";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
         assertThat(analysis.getEntityFields().get("User")).containsAnyOf("nickname", "firstName");
@@ -194,7 +194,7 @@ class AdvancedHQLParserTest {
     void testSelectWithExists() throws ParseException {
         String query = "SELECT u FROM User u WHERE EXISTS (SELECT 1 FROM Purchase p WHERE p.userId = u.id AND p.status = 'PENDING')";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
         assertThat(analysis.getAliases()).contains("u", "p");
@@ -204,7 +204,7 @@ class AdvancedHQLParserTest {
     void testSelectWithLike() throws ParseException {
         String query = "SELECT u FROM User u WHERE u.email LIKE :pattern ESCAPE '\\\\'";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
         assertThat(analysis.getEntityFields().get("User")).contains("email");
@@ -215,7 +215,7 @@ class AdvancedHQLParserTest {
     void testSelectWithOrderByNullsFirst() throws ParseException {
         String query = "SELECT u FROM User u ORDER BY u.lastLogin DESC NULLS FIRST";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
         assertThat(analysis.getEntityFields().get("User")).contains("lastLogin");
@@ -225,7 +225,7 @@ class AdvancedHQLParserTest {
     void testSelectWithMultipleOrderBy() throws ParseException {
         String query = "SELECT u FROM User u ORDER BY u.country ASC, u.name ASC, u.age DESC";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
         assertThat(analysis.getEntityFields().get("User")).contains("country", "name", "age");
@@ -235,7 +235,7 @@ class AdvancedHQLParserTest {
     void testSelectWithPositionalParameters() throws ParseException {
         String query = "SELECT u FROM User u WHERE u.name = ?1 AND u.age > ?2 AND u.status = ?3";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
         assertThat(analysis.getParameters()).contains("?1", "?2", "?3");
@@ -245,7 +245,7 @@ class AdvancedHQLParserTest {
     void testSelectWithRightJoin() throws ParseException {
         String query = "SELECT u, o FROM User u RIGHT JOIN u.orders o";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
         assertThat(analysis.getAliases()).contains("u", "o");
@@ -255,7 +255,7 @@ class AdvancedHQLParserTest {
     void testSelectWithFetchJoin() throws ParseException {
         String query = "SELECT u FROM User u LEFT JOIN FETCH u.orders WHERE u.active = true";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
         assertThat(analysis.getEntityNames()).contains("User");
@@ -267,7 +267,7 @@ class AdvancedHQLParserTest {
     void testComplexBooleanExpression() throws ParseException {
         String query = "SELECT u FROM User u WHERE (u.age > 18 AND u.country = 'US') OR (u.verified = true AND u.premium = true)";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
         assertThat(analysis.getEntityFields().get("User")).contains("age", "country", "verified", "premium");
@@ -277,7 +277,7 @@ class AdvancedHQLParserTest {
     void testArithmeticExpressions() throws ParseException {
         String query = "SELECT u FROM User u WHERE u.salary * 12 > 100000 AND u.bonus + u.commission > 10000";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
         assertThat(analysis.getEntityFields().get("User")).contains("salary", "bonus", "commission");
@@ -287,7 +287,7 @@ class AdvancedHQLParserTest {
     void testNotExpression() throws ParseException {
         String query = "SELECT u FROM User u WHERE NOT u.deleted AND u.email NOT LIKE '%@test.com'";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
         assertThat(analysis.getEntityFields().get("User")).contains("deleted", "email");
@@ -299,7 +299,7 @@ class AdvancedHQLParserTest {
     void testNestedPaths() throws ParseException {
         String query = "SELECT u.address.city, u.address.country FROM User u";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
         // The parser should track the field paths
@@ -310,7 +310,7 @@ class AdvancedHQLParserTest {
     void testUpdateWithoutAlias() throws ParseException {
         String query = "UPDATE User SET status = 'INACTIVE'";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.UPDATE);
         assertThat(analysis.getEntityNames()).contains("User");
@@ -321,7 +321,7 @@ class AdvancedHQLParserTest {
     void testCurrentDateTimeFunctions() throws ParseException {
         String query = "SELECT CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP FROM User u";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
         assertThat(analysis.getEntityNames()).contains("User");

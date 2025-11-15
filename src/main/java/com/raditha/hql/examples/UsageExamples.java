@@ -2,7 +2,7 @@ package com.raditha.hql.examples;
 
 import com.raditha.hql.parser.HQLParser;
 import com.raditha.hql.parser.ParseException;
-import com.raditha.hql.model.QueryAnalysis;
+import com.raditha.hql.model.MetaData;
 import com.raditha.hql.converter.HQLToPostgreSQLConverter;
 import com.raditha.hql.converter.ConversionException;
 
@@ -48,7 +48,7 @@ public class UsageExamples {
         String query = "SELECT u.name, u.email FROM User u WHERE u.active = true AND u.age > :minAge";
         
         try {
-            QueryAnalysis analysis = parser.analyze(query);
+            MetaData analysis = parser.analyze(query);
             
             System.out.println("Query Type: " + analysis.getQueryType());
             System.out.println("Entities: " + analysis.getEntityNames());
@@ -84,7 +84,7 @@ public class UsageExamples {
         String hqlQuery = "SELECT u FROM User u WHERE u.userName = :name";
         
         try {
-            QueryAnalysis analysis = parser.analyze(hqlQuery);
+            MetaData analysis = parser.analyze(hqlQuery);
             String sqlQuery = converter.convert(hqlQuery, analysis);
             System.out.println("HQL: " + hqlQuery);
             System.out.println("SQL: " + sqlQuery);
@@ -109,7 +109,7 @@ public class UsageExamples {
                       "WHERE u.active = true AND o.total > 100 " +
                       "ORDER BY o.total DESC";
         
-        QueryAnalysis analysis = parser.analyze(query);
+        MetaData analysis = parser.analyze(query);
 
         System.out.println("Query: " + query);
         System.out.println("\nAnalysis:");
@@ -144,7 +144,7 @@ public class UsageExamples {
         String hqlQuery = "UPDATE User SET lastLogin = CURRENT_TIMESTAMP WHERE userName = :username";
         
         try {
-            QueryAnalysis analysis = parser.analyze(hqlQuery);
+            MetaData analysis = parser.analyze(hqlQuery);
             System.out.println("Entities involved: " + analysis.getEntityNames());
             
             String sqlQuery = converter.convert(hqlQuery, analysis);

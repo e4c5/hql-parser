@@ -2,7 +2,7 @@ package com.raditha.hql.parser;
 
 import com.raditha.hql.grammar.HQLBaseVisitor;
 import com.raditha.hql.grammar.HQLParser.*;
-import com.raditha.hql.model.QueryAnalysis;
+import com.raditha.hql.model.MetaData;
 
 import java.util.*;
 
@@ -11,13 +11,13 @@ import java.util.*;
  */
 public class QueryAnalysisVisitor extends HQLBaseVisitor<Void> {
     
-    private final QueryAnalysis analysis;
+    private final MetaData analysis;
     private final Map<String, String> aliasToEntity = new HashMap<>();
     private String currentEntity = null;
     private boolean inUpdateStatement = false;
     private boolean inDeleteStatement = false;
     
-    public QueryAnalysisVisitor(QueryAnalysis analysis) {
+    public QueryAnalysisVisitor(MetaData analysis) {
         this.analysis = analysis;
     }
     
