@@ -177,7 +177,7 @@ System.out.println("Fields: " + analysis2.getEntityFields()); // {Purchase=[stat
 - SELECT statements with projection
 - UPDATE statements (with/without alias)
 - DELETE statements (with/without alias)
-- INSERT ... SELECT statements
+- INSERT ... SELECT statements (grammar support only - parsing works but SQL conversion not yet implemented)
 
 ### Clauses
 - SELECT with DISTINCT
@@ -205,6 +205,8 @@ System.out.println("Fields: " + analysis2.getEntityFields()); // {Purchase=[stat
 - Date/Time: CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP
 - Math: ABS, SQRT, MOD
 - Other: COALESCE, NULLIF, CAST, SIZE
+
+**Note:** The parser supports all these functions in the grammar, but the PostgreSQL converter currently only implements conversion for: COUNT, SUM, AVG, MAX, MIN, UPPER, LOWER, LENGTH, CONCAT, COALESCE, SIZE, ABS, SQRT, CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP. Functions like TRIM, SUBSTRING, NULLIF, CAST, and MOD are parsed but not yet converted to SQL.
 
 ### Parameters
 - Named parameters: `:paramName` (avoid using HQL keywords like `:end`, `:and` as parameter names)
@@ -322,6 +324,10 @@ mvn package
 5. **Nested Paths**: Paths like `u.address.city` are parsed but may not convert correctly if intermediate relationships aren't mapped.
 
 6. **Collection Functions**: HQL-specific functions like `SIZE()`, `MEMBER OF` may not have direct PostgreSQL equivalents.
+
+7. **Incomplete Function Support**: While the parser grammar supports all HQL/JPQL functions, the converter currently only implements conversion for: COUNT, SUM, AVG, MAX, MIN, UPPER, LOWER, LENGTH, CONCAT, COALESCE, SIZE, ABS, SQRT, CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP. Functions like TRIM, SUBSTRING, NULLIF, CAST, and MOD are parsed but passed through as-is without proper conversion.
+
+8. **INSERT Statement Conversion**: While INSERT ... SELECT statements can be parsed, the converter does not yet implement SQL conversion for INSERT statements. Only SELECT, UPDATE, and DELETE statements are fully supported for conversion.
 
 ### Field Extraction Behavior
 
