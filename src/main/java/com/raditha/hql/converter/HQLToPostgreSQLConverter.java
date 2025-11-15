@@ -26,7 +26,7 @@ public class HQLToPostgreSQLConverter {
     
     /**
      * Register entity to table mapping.
-     * 
+     *
      * @param entityName The entity class name
      * @param tableName The corresponding database table name
      */
@@ -78,18 +78,18 @@ public class HQLToPostgreSQLConverter {
         
         return visitor.visit(tree);
     }
-    
+
     /**
      * Visitor that converts HQL parse tree to PostgreSQL SQL.
      */
     private static class PostgreSQLConversionVisitor extends HQLBaseVisitor<String> {
-        
+
         private final Map<String, String> entityToTableMap;
         private final Map<String, Map<String, String>> entityFieldToColumnMap;
         private String currentEntity = null;  // For UPDATE/DELETE without alias
-        
+        private String updateAlias = null;    // For UPDATE with alias
         private final MetaData analysis;
-        
+
         public PostgreSQLConversionVisitor(Map<String, String> entityToTableMap,
                                           Map<String, Map<String, String>> entityFieldToColumnMap,
                                           MetaData analysis) {
@@ -97,40 +97,40 @@ public class HQLToPostgreSQLConverter {
             this.entityFieldToColumnMap = entityFieldToColumnMap;
             this.analysis = analysis;
         }
-        
+
         @Override
         public String visitSelectStatement(SelectStatementContext ctx) {
             StringBuilder sql = new StringBuilder();
-            
+
             // IMPORTANT: Visit FROM first to establish table context,
             // but don't append to SQL yet
             String fromSql = visit(ctx.fromClause());
-            
+
             // Now visit SELECT with aliases resolved
             sql.append(visit(ctx.selectClause()));
             sql.append(" ");
             sql.append(fromSql);
-            
+
             if (ctx.whereClause() != null) {
                 sql.append(" ");
                 sql.append(visit(ctx.whereClause()));
             }
-            
+
             if (ctx.groupByClause() != null) {
                 sql.append(" ");
                 sql.append(visit(ctx.groupByClause()));
             }
-            
+
             if (ctx.havingClause() != null) {
                 sql.append(" ");
                 sql.append(visit(ctx.havingClause()));
             }
-            
+
             if (ctx.orderByClause() != null) {
                 sql.append(" ");
                 sql.append(visit(ctx.orderByClause()));
             }
-            
+
             return sql.toString();
         }
         
@@ -144,10 +144,10 @@ public class HQLToPostgreSQLConverter {
             
             sql.append(" ");
             sql.append(visit(ctx.selectItemList()));
-            
+
             return sql.toString();
         }
-        
+
         @Override
         public String visitSelectItemList(SelectItemListContext ctx) {
             List<String> items = new ArrayList<>();
@@ -156,18 +156,18 @@ public class HQLToPostgreSQLConverter {
             }
             return String.join(", ", items);
         }
-        
+
         @Override
         public String visitSelectItem(SelectItemContext ctx) {
             String expr = visit(ctx.expression());
-            
+
             if (ctx.identifier() != null) {
                 expr += " AS " + ctx.identifier().getText();
             }
-            
+
             return expr;
         }
-        
+
         @Override
         public String visitFromClause(FromClauseContext ctx) {
             List<String> items = new ArrayList<>();
@@ -176,53 +176,53 @@ public class HQLToPostgreSQLConverter {
             }
             return "FROM " + String.join(", ", items);
         }
-        
+
         @Override
         public String visitFromItem(FromItemContext ctx) {
             String entityName = ctx.entityName().getText();
             String tableName = entityToTableMap.getOrDefault(entityName, entityName.toLowerCase());
-            
+
             StringBuilder sql = new StringBuilder(tableName);
-            
+
             if (ctx.identifier() != null) {
                 String alias = ctx.identifier().getText();
                 sql.append(" ").append(alias);
             }
-            
+
             if (ctx.joinClause() != null && !ctx.joinClause().isEmpty()) {
                 for (JoinClauseContext join : ctx.joinClause()) {
                     sql.append(" ");
                     sql.append(visit(join));
                 }
             }
-            
+
             return sql.toString();
         }
-        
+
         @Override
         public String visitJoinClause(JoinClauseContext ctx) {
             StringBuilder sql = new StringBuilder();
-            
+
             if (ctx.joinType() != null) {
                 sql.append(visit(ctx.joinType())).append(" ");
             }
-            
+
             sql.append("JOIN");
-            
+
             String joinAlias = ctx.identifier().getText();
             String joinEntityName = analysis.getEntityForAlias(joinAlias);
             String tableName = entityToTableMap.getOrDefault(joinEntityName, joinEntityName.toLowerCase());
-            
+
             sql.append(" ").append(tableName);
             sql.append(" ").append(joinAlias);
-            
+
             if (ctx.expression() != null) {
                 sql.append(" ON ").append(visit(ctx.expression()));
             }
-            
+
             return sql.toString();
         }
-        
+
         @Override
         public String visitJoinType(JoinTypeContext ctx) {
             if (ctx.INNER() != null) {
@@ -234,7 +234,7 @@ public class HQLToPostgreSQLConverter {
             }
             return "";
         }
-        
+
         @Override
         public String visitWhereClause(WhereClauseContext ctx) {
             return "WHERE " + visit(ctx.expression());
@@ -244,12 +244,12 @@ public class HQLToPostgreSQLConverter {
         public String visitGroupByClause(GroupByClauseContext ctx) {
             return "GROUP BY " + visit(ctx.expressionList());
         }
-        
+
         @Override
         public String visitHavingClause(HavingClauseContext ctx) {
             return "HAVING " + visit(ctx.expression());
         }
-        
+
         @Override
         public String visitOrderByClause(OrderByClauseContext ctx) {
             List<String> items = new ArrayList<>();
@@ -262,67 +262,69 @@ public class HQLToPostgreSQLConverter {
         @Override
         public String visitOrderByItem(OrderByItemContext ctx) {
             StringBuilder sql = new StringBuilder(visit(ctx.expression()));
-            
+
             if (ctx.ASC() != null) {
                 sql.append(" ASC");
             } else if (ctx.DESC() != null) {
                 sql.append(" DESC");
             }
-            
+
             if (ctx.NULLS() != null) {
                 sql.append(" NULLS ");
                 sql.append(ctx.FIRST() != null ? "FIRST" : "LAST");
             }
-            
+
             return sql.toString();
         }
-        
+
         @Override
         public String visitUpdateStatement(UpdateStatementContext ctx) {
             String entityName = ctx.entityName().getText();
             String tableName = entityToTableMap.getOrDefault(entityName, entityName.toLowerCase());
-            
+
             currentEntity = entityName;
+            updateAlias = ctx.identifier() != null ? ctx.identifier().getText() : null;
 
             StringBuilder sql = new StringBuilder("UPDATE ");
             sql.append(tableName);
 
             // Include alias if present (required for PostgreSQL when using qualified column references)
-            if (ctx.identifier() != null) {
+            if (updateAlias != null) {
                 sql.append(" ");
-                sql.append(ctx.identifier().getText());
+                sql.append(updateAlias);
             }
 
             sql.append(" ");
             sql.append(visit(ctx.setClause()));
-            
+
             if (ctx.whereClause() != null) {
                 sql.append(" ");
                 sql.append(visit(ctx.whereClause()));
             }
-            
+
             currentEntity = null;
-            
+            updateAlias = null;
+
             return sql.toString();
         }
-        
+
         @Override
         public String visitDeleteStatement(DeleteStatementContext ctx) {
             String entityName = ctx.entityName().getText();
             String tableName = entityToTableMap.getOrDefault(entityName, entityName.toLowerCase());
-            
+
             currentEntity = entityName;
-            
+
             StringBuilder sql = new StringBuilder("DELETE FROM ");
             sql.append(tableName);
-            
+
             if (ctx.whereClause() != null) {
                 sql.append(" ");
                 sql.append(visit(ctx.whereClause()));
             }
-            
+
             currentEntity = null;
-            
+
             return sql.toString();
         }
         
@@ -334,16 +336,74 @@ public class HQLToPostgreSQLConverter {
             }
             return "SET " + String.join(", ", assignments);
         }
-        
+
         @Override
         public String visitAssignment(AssignmentContext ctx) {
-            return visit(ctx.path()) + " = " + visit(ctx.expression());
+            // In UPDATE statements, PostgreSQL requires unqualified column names on the LHS
+            // e.g., "UPDATE table t SET col = value" not "UPDATE table t SET t.col = value"
+            PathContext pathCtx = ctx.path();
+            List<IdentifierContext> ids = pathCtx.identifier();
+            String lhs;
+
+            if (ids.size() == 1) {
+                // Unqualified field: resolve to column name
+                lhs = resolveColumnForField(currentEntity, ids.get(0).getText());
+            } else if (ids.size() >= 2) {
+                // Qualified field (alias.field): drop alias if it's the update alias
+                String first = ids.get(0).getText();
+                String second = ids.get(1).getText();
+                String entityName = analysis.getEntityForAlias(first);
+                if (entityName == null) entityName = first;
+
+                // If this matches the update alias, drop it for the assignment LHS
+                if (updateAlias != null && first.equals(updateAlias) && entityName.equals(currentEntity)) {
+                    lhs = resolveColumnForField(entityName, second);
+                } else {
+                    // Keep qualification for other aliases (shouldn't happen in standard UPDATE)
+                    lhs = first + "." + resolveColumnForField(entityName, second);
+                }
+            } else {
+                lhs = pathCtx.getText();
+            }
+
+            return lhs + " = " + visit(ctx.expression());
         }
-        
+
+        private String resolveColumnForField(String entityName, String fieldName) {
+            if (entityName != null && entityFieldToColumnMap.containsKey(entityName)) {
+                Map<String, String> mapping = entityFieldToColumnMap.get(entityName);
+                if (mapping.containsKey(fieldName)) {
+                    return mapping.get(fieldName);
+                }
+            }
+            // Fallback: apply snake_case conversion for unmapped fields
+            return toSnakeCase(fieldName);
+        }
+
+        private String toSnakeCase(String input) {
+            if (input == null || input.isEmpty()) return input;
+            if (input.indexOf('_') >= 0 || input.equals(input.toLowerCase())) return input;
+            StringBuilder sb = new StringBuilder();
+            char[] chars = input.toCharArray();
+            for (int i = 0; i < chars.length; i++) {
+                char c = chars[i];
+                if (Character.isUpperCase(c)) {
+                    if (i > 0 && (Character.isLowerCase(chars[i - 1]) || Character.isDigit(chars[i - 1]) ||
+                        (i + 1 < chars.length && Character.isLowerCase(chars[i + 1])))) {
+                        sb.append('_');
+                    }
+                    sb.append(Character.toLowerCase(c));
+                } else {
+                    sb.append(c);
+                }
+            }
+            return sb.toString();
+        }
+
         @Override
         public String visitPath(PathContext ctx) {
             List<IdentifierContext> identifiers = ctx.identifier();
-            
+
             if (identifiers.size() == 1) {
                 // Unqualified field - check if we can map it
                 String fieldName = identifiers.get(0).getText();
@@ -355,13 +415,18 @@ public class HQLToPostgreSQLConverter {
                         return fieldMappings.get(fieldName);
                     }
                 }
-                
+
+                // Apply snake_case fallback for unmapped fields in UPDATE/DELETE context
+                if (currentEntity != null) {
+                    return toSnakeCase(fieldName);
+                }
+
                 // No mapping found, return as-is
                 return fieldName;
             } else if (identifiers.size() >= 2) {
                 String first = identifiers.get(0).getText();
                 String second = identifiers.get(1).getText();
-                
+
                 // Check if first is an alias - use QueryAnalysis instead of local map
                 String entityName = analysis.getEntityForAlias(first);
                 if (entityName == null) {
@@ -374,20 +439,23 @@ public class HQLToPostgreSQLConverter {
                 if (entityFieldToColumnMap.containsKey(entityName) &&
                     entityFieldToColumnMap.get(entityName).containsKey(second)) {
                     columnName = entityFieldToColumnMap.get(entityName).get(second);
+                } else {
+                    // Apply snake_case fallback for unmapped fields
+                    columnName = toSnakeCase(columnName);
                 }
-                
+
                 return first + "." + columnName;
             }
-            
+
             return ctx.getText();
         }
-        
+
         @Override
         public String visitParameter(ParameterContext ctx) {
             // PostgreSQL uses $1, $2, etc., but we'll keep the original format for simplicity
             return ctx.getText();
         }
-        
+
         @Override
         public String visitExpressionList(ExpressionListContext ctx) {
             List<String> expressions = new ArrayList<>();
@@ -396,7 +464,7 @@ public class HQLToPostgreSQLConverter {
             }
             return String.join(", ", expressions);
         }
-        
+
         @Override
         public String visitStatement(StatementContext ctx) {
             // Don't use default aggregation for statement - handle each child explicitly

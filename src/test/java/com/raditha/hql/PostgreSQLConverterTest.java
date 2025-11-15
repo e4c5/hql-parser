@@ -209,4 +209,24 @@ class PostgreSQLConverterTest {
         assertThat(sql).contains("LEFT JOIN commission c");
         assertThat(sql).contains("WHERE");
     }
+
+    @Test
+    void testUpdateOpenCoverageWithAliasColumnQualification() throws ParseException, ConversionException {
+        converter.registerEntityMapping("Insurance", "insurance");
+        converter.registerFieldMapping("Insurance", "isDeleted", "is_deleted");
+        converter.registerFieldMapping("Insurance", "isActive", "is_active");
+        converter.registerFieldMapping("Insurance", "insurancePolicyId", "insurance_policy_id");
+        String hql = "update Insurance o set o.isDeleted = true, o.isActive = false where o.insurancePolicyId = ?1";
+        MetaData analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
+        assertThat(sql).startsWith("UPDATE insurance o SET");
+        // Ensure assignment columns are unqualified
+        assertThat(sql).contains("SET is_deleted = true");
+        assertThat(sql).contains("is_active = false");
+        // Ensure WHERE clause retains alias qualification
+        assertThat(sql).contains("WHERE o.insurance_policy_id = ?1");
+        // Negative checks to avoid regressions
+        assertThat(sql).doesNotContain("o.is_deleted = true");
+        assertThat(sql).doesNotContain("o.is_active = false");
+    }
 }

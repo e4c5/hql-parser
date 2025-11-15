@@ -381,8 +381,8 @@ class AdvancedConverterTest {
         MetaData analysis = parser.analyze(hql);
         String sql = converter.convert(hql, analysis);
         
-        // Should keep field name as-is
-        assertThat(sql).contains("u.unknownField");
+        // Unmapped fields should be converted to snake_case as fallback
+        assertThat(sql).contains("u.unknown_field");
     }
     
     @Test
