@@ -146,63 +146,6 @@ public class QueryAnalysisVisitor extends HQLBaseVisitor<Void> {
         return visitChildren(ctx);
     }
     
-    @Override
-    public Void visitConstructorExpression(ConstructorExpressionContext ctx) {
-        // For constructor expressions, we want to:
-        // 1. Skip the class name path (e.g., com.csi.bm.approval.model.to.UcafFormDTO)
-        // 2. Visit the constructor arguments to extract field references
-        
-        // Visit constructor arguments only
-        if (ctx.constructorArguments() != null) {
-            visit(ctx.constructorArguments());
-        }
-        
-        return null;
-    }
-    
-    @Override
-    public Void visitConstructorArguments(ConstructorArgumentsContext ctx) {
-        // Visit all expression arguments
-        return visitChildren(ctx);
-    }
-    
-    // Explicitly handle expression types to ensure all children are visited
-    @Override
-    public Void visitBetweenExpression(BetweenExpressionContext ctx) {
-        // Visit all three expressions: main, lower bound, upper bound
-        return visitChildren(ctx);
-    }
-    
-    @Override
-    public Void visitInExpression(InExpressionContext ctx) {
-        return visitChildren(ctx);
-    }
-    
-    @Override
-    public Void visitComparisonExpression(ComparisonExpressionContext ctx) {
-        return visitChildren(ctx);
-    }
-    
-    @Override
-    public Void visitEqualityExpression(EqualityExpressionContext ctx) {
-        return visitChildren(ctx);
-    }
-    
-    @Override
-    public Void visitAndExpression(AndExpressionContext ctx) {
-        return visitChildren(ctx);
-    }
-    
-    @Override
-    public Void visitOrExpression(OrExpressionContext ctx) {
-        return visitChildren(ctx);
-    }
-    
-    @Override
-    public Void visitLikeExpression(LikeExpressionContext ctx) {
-        return visitChildren(ctx);
-    }
-    
     // For all expression types, traverse children
     @Override
     public Void visitPrimaryExpression(PrimaryExpressionContext ctx) {
