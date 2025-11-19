@@ -23,55 +23,55 @@ class ConstructorExpressionTest {
     
     @Test
     void testSimpleConstructorExpression() throws ParseException {
-        String query = "SELECT NEW dto.UserDTO(u.name, u.email) FROM User u";
+        String query = "SELECT NEW dto.AccountDTO(a.accountNumber, a.balance) FROM Account a";
         
         MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
-        assertThat(analysis.getEntityNames()).contains("User");
+        assertThat(analysis.getEntityNames()).contains("Account");
         assertThat(analysis.getEntityNames()).doesNotContain("dto");
-        assertThat(analysis.getEntityFields().get("User")).contains("name", "email");
+        assertThat(analysis.getEntityFields().get("Account")).contains("accountNumber", "balance");
     }
     
     @Test
     void testConstructorWithBetweenAndParameters() throws ParseException {
-        String query = "SELECT NEW dto.ReportDTO(r.id, r.date) " +
-                      "FROM Report r WHERE r.date BETWEEN :start AND :end";
+        String query = "SELECT NEW dto.TransactionDTO(t.id, t.amount) " +
+                      "FROM Transaction t WHERE t.transactionDate BETWEEN :start AND :end";
         
         MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
-        assertThat(analysis.getEntityNames()).contains("Report");
-        assertThat(analysis.getEntityFields().get("Report")).contains("id", "date");
+        assertThat(analysis.getEntityNames()).contains("Transaction");
+        assertThat(analysis.getEntityFields().get("Transaction")).contains("id", "amount", "transactionDate");
         assertThat(analysis.getParameters()).contains("start", "end");
     }
     
     @Test
     void testProblemStatementQuery() throws ParseException {
-        String query = "SELECT NEW com.csi.bm.approval.model.to.UcafFormDTO(" +
-                      "u.visitNo, u.visitType, u.doctorName, u.visitDate, u.patientPomrId, " +
-                      "u.id, u.approval.id) " +
-                      "FROM UCAF u WHERE u.patientId = :patientId AND u.tenantId = :tenantId " +
-                      "AND u.hospital = :hospitalId AND u.visitDate BETWEEN :start AND :end";
+        String query = "SELECT NEW com.finance.reporting.model.dto.TransactionSummaryDTO(" +
+                      "t.transactionId, t.accountNumber, t.transactionType, t.amount, " +
+                      "t.currency, t.id, t.account.id) " +
+                      "FROM Transaction t WHERE t.customerId = :customerId AND t.branchId = :branchId " +
+                      "AND t.status = :status AND t.transactionDate BETWEEN :start AND :end";
         
         MetaData analysis = parser.analyze(query);
         
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
-        assertThat(analysis.getEntityNames()).contains("UCAF");
-        assertThat(analysis.getEntityNames()).doesNotContain("com", "csi");
-        assertThat(analysis.getEntityFields().get("UCAF"))
-            .contains("visitNo", "visitType", "doctorName", "visitDate", "patientPomrId", 
-                     "id", "approval", "approval.id", "patientId", "tenantId", "hospital");
+        assertThat(analysis.getEntityNames()).contains("Transaction");
+        assertThat(analysis.getEntityNames()).doesNotContain("com", "finance");
+        assertThat(analysis.getEntityFields().get("Transaction"))
+            .contains("transactionId", "accountNumber", "transactionType", "amount", "currency", 
+                     "id", "account", "account.id", "customerId", "branchId", "status", "transactionDate");
         assertThat(analysis.getParameters())
-            .contains("patientId", "tenantId", "hospitalId", "start", "end");
+            .contains("customerId", "branchId", "status", "start", "end");
     }
     
     @Test
     void testConstructorQueryValidation() {
-        String validQuery = "SELECT NEW dto.UserDTO(u.name) FROM User u";
+        String validQuery = "SELECT NEW dto.AccountDTO(a.accountNumber) FROM Account a";
         assertThat(parser.isValid(validQuery)).isTrue();
         
-        String invalidQuery = "SELECT NEW dto.UserDTO(u.name FROM User u";
+        String invalidQuery = "SELECT NEW dto.AccountDTO(a.accountNumber FROM Account a";
         assertThat(parser.isValid(invalidQuery)).isFalse();
     }
 }

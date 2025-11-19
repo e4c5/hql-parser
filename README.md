@@ -150,17 +150,17 @@ System.out.println("Aliases: " + analysis.getAliases());
 HQLParser parser = new HQLParser();
 
 // Constructor expressions allow creating DTOs directly in queries
-String query = "SELECT NEW com.example.dto.UserDTO(u.name, u.email) " +
-              "FROM User u WHERE u.active = true";
+String query = "SELECT NEW com.finance.dto.AccountDTO(a.accountNumber, a.balance) " +
+              "FROM Account a WHERE a.status = 'ACTIVE'";
 
 MetaData analysis = parser.analyze(query);
 System.out.println("Query Type: " + analysis.getQueryType()); // SELECT
-System.out.println("Entities: " + analysis.getEntityNames()); // [User]
-System.out.println("Fields: " + analysis.getEntityFields()); // {User=[name, email, active]}
+System.out.println("Entities: " + analysis.getEntityNames()); // [Account]
+System.out.println("Fields: " + analysis.getEntityFields()); // {Account=[accountNumber, balance, status]}
 
 // Works with BETWEEN clause and parameters
-String query2 = "SELECT NEW dto.ReportDTO(r.id, r.total) " +
-               "FROM Report r WHERE r.date BETWEEN :start AND :end";
+String query2 = "SELECT NEW dto.TransactionDTO(t.id, t.amount) " +
+               "FROM Transaction t WHERE t.transactionDate BETWEEN :start AND :end";
 MetaData analysis2 = parser.analyze(query2);
 System.out.println("Parameters: " + analysis2.getParameters()); // [start, end]
 ```
