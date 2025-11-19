@@ -144,6 +144,27 @@ System.out.println("Entities: " + analysis.getEntityNames());
 System.out.println("Aliases: " + analysis.getAliases());
 ```
 
+### Constructor Expressions
+
+```java
+HQLParser parser = new HQLParser();
+
+// Constructor expressions allow creating DTOs directly in queries
+String query = "SELECT NEW com.example.dto.UserDTO(u.name, u.email) " +
+              "FROM User u WHERE u.active = true";
+
+MetaData analysis = parser.analyze(query);
+System.out.println("Query Type: " + analysis.getQueryType()); // SELECT
+System.out.println("Entities: " + analysis.getEntityNames()); // [User]
+System.out.println("Fields: " + analysis.getEntityFields()); // {User=[name, email, active]}
+
+// Works with BETWEEN clause and parameters
+String query2 = "SELECT NEW dto.ReportDTO(r.id, r.total) " +
+               "FROM Report r WHERE r.date BETWEEN :start AND :end";
+MetaData analysis2 = parser.analyze(query2);
+System.out.println("Parameters: " + analysis2.getParameters()); // [start, end]
+```
+
 ### Update Queries
 
 ```java
@@ -175,12 +196,14 @@ System.out.println("Fields: " + analysis2.getEntityFields()); // {Purchase=[stat
 
 ### Query Types
 - SELECT statements with projection
+- Constructor expressions with `SELECT NEW ClassName(args...)`
 - UPDATE statements (with/without alias)
 - DELETE statements (with/without alias)
 - INSERT ... SELECT statements (grammar support only - parsing works but SQL conversion not yet implemented)
 
 ### Clauses
 - SELECT with DISTINCT
+- Constructor expressions for creating DTOs directly in queries
 - FROM with entity aliases
 - WHERE with complex predicates
 - GROUP BY
@@ -344,7 +367,6 @@ While the parser supports most common HQL/JPQL features, some advanced features 
 - `INDEX()` function for indexed collections
 - `KEY()` and `VALUE()` functions for map collections
 - `TYPE()` operator for inheritance queries
-- Constructor expressions (e.g., `SELECT NEW dto.UserDTO(u.name, u.email)`)
 - Bulk INSERT with VALUES clause (only INSERT ... SELECT supported)
 
 ## Grammar

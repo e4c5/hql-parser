@@ -33,7 +33,8 @@ selectItemList
     ;
 
 selectItem
-    : expression (AS? identifier)?
+    : NEW path LP expressionList? RP (AS? identifier)?  // Constructor expression
+    | expression (AS? identifier)?
     ;
 
 fromClause
@@ -185,6 +186,7 @@ nonReservedWord
     | NULLS
     | FIRST
     | LAST
+    | END
     ;
 
 // Lexer Rules
@@ -197,6 +199,7 @@ INSERT      : [Ii][Nn][Ss][Ee][Rr][Tt];
 INTO        : [Ii][Nn][Tt][Oo];
 SET         : [Ss][Ee][Tt];
 AS          : [Aa][Ss];
+NEW         : [Nn][Ee][Ww];
 JOIN        : [Jj][Oo][Ii][Nn];
 LEFT        : [Ll][Ee][Ff][Tt];
 RIGHT       : [Rr][Ii][Gg][Hh][Tt];

@@ -143,6 +143,21 @@ public class QueryAnalysisVisitor extends HQLBaseVisitor<Void> {
     
     @Override
     public Void visitSelectItem(SelectItemContext ctx) {
+        // Check if this is a constructor expression (NEW ...)
+        // SelectItem can be: NEW path LP expressionList? RP | expression
+        // If it starts with NEW keyword, skip the path (class name) and only visit expressionList
+        if (ctx.getChildCount() > 0 && ctx.getChild(0).getText().equalsIgnoreCase("NEW")) {
+            // Find the expressionList (arguments) and visit them
+            // Structure: NEW path LP expressionList? RP (AS? identifier)?
+            for (int i = 0; i < ctx.getChildCount(); i++) {
+                org.antlr.v4.runtime.tree.ParseTree child = ctx.getChild(i);
+                // Visit expressionList if present, skip path (class name)
+                if (child instanceof ExpressionListContext) {
+                    visit(child);
+                }
+            }
+            return null;
+        }
         return visitChildren(ctx);
     }
     
