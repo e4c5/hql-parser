@@ -159,7 +159,26 @@ public class HQLToPostgreSQLConverter {
 
         @Override
         public String visitSelectItem(SelectItemContext ctx) {
-            String expr = visit(ctx.expression());
+            String expr;
+
+            // Handle constructor expression: NEW path LP expressionList? RP
+            if (ctx.NEW() != null && ctx.path() != null) {
+                StringBuilder sb = new StringBuilder("NEW ");
+                // For constructor class names, preserve the fully qualified name as-is
+                sb.append(ctx.path().getText());
+                sb.append("(");
+                if (ctx.expressionList() != null) {
+                    sb.append(visit(ctx.expressionList()));
+                }
+                sb.append(")");
+                expr = sb.toString();
+            } else if (ctx.expression() != null) {
+                // Handle regular expression
+                expr = visit(ctx.expression());
+            } else {
+                // Fallback: this should not happen with valid grammar
+                expr = ctx.getText();
+            }
 
             if (ctx.identifier() != null) {
                 expr += " AS " + ctx.identifier().getText();
