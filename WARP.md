@@ -4,7 +4,7 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 
 ## Project Overview
 
-This is a Java-based HQL/JPQL parser built with ANTLR4 that parses Hibernate Query Language and Java Persistence Query Language, analyzes queries, and converts them to PostgreSQL SQL. The project uses Maven for build management and targets Java 11.
+This is a Java-based HQL/JPQL parser built with ANTLR4 that parses Hibernate Query Language and Java Persistence Query Language, analyzes queries, and converts them to PostgreSQL SQL. The project uses Maven for build management and targets Java 11 (developed with Java 21).
 
 ## Essential Commands
 
@@ -62,13 +62,14 @@ If IntelliJ shows "Cannot find symbol: HQLLexer" errors:
 - `ParseException`: Custom exception for parse errors
 
 **Model Layer** (`com.raditha.hql.model`):
-- `QueryAnalysis`: Immutable result object containing query metadata
+- `MetaData`: Immutable result object containing query metadata
 - `QueryType`: Enum for SELECT, UPDATE, DELETE, INSERT
 
 **Converter Layer** (`com.raditha.hql.converter`):
 - `HQLToPostgreSQLConverter`: Converts HQL to SQL with entity/field mapping support
 - Uses visitor pattern with `PostgreSQLConversionVisitor` (inner class) to traverse parse tree
 - Requires registration of entity→table and field→column mappings before conversion
+- `convert(String hqlQuery, MetaData analysis)`: Main conversion method that takes both query and analysis
 
 **Grammar** (`src/main/antlr4/com/raditha/hql/grammar/HQL.g4`):
 - Single combined ANTLR4 grammar defining both lexer and parser rules
@@ -80,15 +81,15 @@ If IntelliJ shows "Cannot find symbol: HQLLexer" errors:
 ### Design Patterns
 
 - **Visitor Pattern**: Used extensively for both query analysis and SQL conversion
-- **Builder Pattern**: `QueryAnalysis` accumulates data via add methods
-- **Factory Pattern**: `HQLParser.analyze()` creates `QueryAnalysis` instances
+- **Builder Pattern**: `MetaData` accumulates data via add methods during analysis
+- **Factory Pattern**: `HQLParser.analyze()` creates `MetaData` instances
 - **Error Handling**: Custom error listeners capture parse errors without throwing immediately
 
 ### Data Flow
 
 1. Raw HQL string → ANTLR Lexer/Parser → Parse Tree
-2. Parse Tree → QueryAnalysisVisitor → QueryAnalysis (for analysis)
-3. Parse Tree → PostgreSQLConversionVisitor → SQL string (for conversion)
+2. Parse Tree → QueryAnalysisVisitor → MetaData (for analysis)
+3. Parse Tree + MetaData → PostgreSQLConversionVisitor → SQL string (for conversion)
 
 ## Important Implementation Notes
 
@@ -116,8 +117,8 @@ If IntelliJ shows "Cannot find symbol: HQLLexer" errors:
 - Tests use fluent AssertJ assertions (`assertThat()`)
 - Each test should focus on a single HQL feature
 - Use `@BeforeEach` to initialize fresh `HQLParser` instances
-- Current test suite: 93 tests covering parser analysis and SQL conversion
-- Test classes: `HQLParserTest`, `AdvancedHQLParserTest`, `PostgreSQLConverterTest`, `AdvancedConverterTest`
+- Current test suite: 99 tests covering parser analysis and SQL conversion
+- Test classes: `HQLParserTest`, `AdvancedHQLParserTest`, `PostgreSQLConverterTest`, `AdvancedConverterTest`, `JoinAnalysisTest`
 
 ## Common Development Patterns
 
@@ -126,7 +127,7 @@ If IntelliJ shows "Cannot find symbol: HQLLexer" errors:
 2. Run `mvn clean compile` to regenerate parser
 3. Update `QueryAnalysisVisitor` if metadata extraction needed
 4. Update `PostgreSQLConversionVisitor` in converter if SQL conversion needed
-5. Add tests to `HQLParserTest` and `PostgreSQLConverterTest`
+5. Add tests to `HQLParserTest` (or `AdvancedHQLParserTest`) and `PostgreSQLConverterTest` (or `AdvancedConverterTest`)
 
 ### Creating New Visitors
 - Extend `HQLBaseVisitor<T>` where `T` is the return type

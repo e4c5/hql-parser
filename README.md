@@ -16,7 +16,7 @@ A comprehensive Java parser for Hibernate Query Language (HQL) and Java Persiste
 
 ## Requirements
 
-- Java 11 or higher
+- Java 11 or higher (project targets Java 11, developed with Java 21)
 - Maven 3.6+
 
 ## IDE Setup
@@ -33,7 +33,7 @@ Add to your `pom.xml`:
 <dependency>
     <groupId>com.raditha</groupId>
     <artifactId>hql-parser</artifactId>
-    <version>1.0.0</version>
+    <version>0.0.2</version>
 </dependency>
 ```
 
@@ -75,18 +75,10 @@ String query = "SELECT u.name, u.email FROM User u WHERE u.active = true AND u.a
 
 MetaData analysis = parser.analyze(query);
 
-System.out.
-
-println("Query Type: "+analysis.getQueryType());
-        System.out.
-
-println("Entities: "+analysis.getEntityNames());
-        System.out.
-
-println("Fields: "+analysis.getEntityFields());
-        System.out.
-
-println("Parameters: "+analysis.getParameters());
+System.out.println("Query Type: " + analysis.getQueryType());
+System.out.println("Entities: " + analysis.getEntityNames());
+System.out.println("Fields: " + analysis.getEntityFields());
+System.out.println("Parameters: " + analysis.getParameters());
 ```
 
 **Output:**
@@ -102,8 +94,11 @@ Parameters: [minAge]
 Convert HQL/JPQL queries to PostgreSQL SQL:
 
 ```java
+import com.raditha.hql.parser.HQLParser;
+import com.raditha.hql.model.MetaData;
 import com.raditha.hql.converter.HQLToPostgreSQLConverter;
 
+HQLParser parser = new HQLParser();
 HQLToPostgreSQLConverter converter = new HQLToPostgreSQLConverter();
 
 // Register entity-to-table mappings
@@ -115,7 +110,12 @@ converter.registerFieldMapping("User", "userName", "user_name");
 converter.registerFieldMapping("User", "firstName", "first_name");
 
 String hql = "SELECT u.userName FROM User u WHERE u.active = true";
-String sql = converter.convert(hql);
+
+// First analyze the query
+MetaData analysis = parser.analyze(hql);
+
+// Then convert using both the query and analysis
+String sql = converter.convert(hql, analysis);
 
 System.out.println("SQL: " + sql);
 ```
@@ -138,7 +138,7 @@ String query = "SELECT u.name, o.total " +
               "WHERE u.active = true AND o.total > 100 " +
               "ORDER BY o.total DESC";
 
-QueryAnalysis analysis = parser.analyze(query);
+MetaData analysis = parser.analyze(query);
 
 System.out.println("Entities: " + analysis.getEntityNames());
 System.out.println("Aliases: " + analysis.getAliases());
@@ -151,7 +151,7 @@ HQLParser parser = new HQLParser();
 
 String query = "UPDATE User SET active = false WHERE lastLogin < :cutoffDate";
 
-QueryAnalysis analysis = parser.analyze(query);
+MetaData analysis = parser.analyze(query);
 System.out.println("Query Type: " + analysis.getQueryType()); // UPDATE
 System.out.println("Parameters: " + analysis.getParameters()); // [cutoffDate]
 ```
@@ -162,12 +162,12 @@ System.out.println("Parameters: " + analysis.getParameters()); // [cutoffDate]
 // DELETE without alias
 String query = "DELETE FROM User WHERE age < 18";
 
-QueryAnalysis analysis = parser.analyze(query);
+MetaData analysis = parser.analyze(query);
 System.out.println("Query Type: " + analysis.getQueryType()); // DELETE
 
 // DELETE with alias (for complex WHERE clauses)
 String query2 = "DELETE FROM Purchase p WHERE p.status = 'CANCELLED' AND p.createdDate < :cutoffDate";
-QueryAnalysis analysis2 = parser.analyze(query2);
+MetaData analysis2 = parser.analyze(query2);
 System.out.println("Fields: " + analysis2.getEntityFields()); // {Purchase=[status, createdDate]}
 ```
 
@@ -177,7 +177,7 @@ System.out.println("Fields: " + analysis2.getEntityFields()); // {Purchase=[stat
 - SELECT statements with projection
 - UPDATE statements (with/without alias)
 - DELETE statements (with/without alias)
-- INSERT ... SELECT statements
+- INSERT ... SELECT statements (grammar support only - parsing works but SQL conversion not yet implemented)
 
 ### Clauses
 - SELECT with DISTINCT
@@ -206,6 +206,8 @@ System.out.println("Fields: " + analysis2.getEntityFields()); // {Purchase=[stat
 - Math: ABS, SQRT, MOD
 - Other: COALESCE, NULLIF, CAST, SIZE
 
+**Note:** The parser supports all these functions in the grammar, but the PostgreSQL converter currently only implements conversion for: COUNT, SUM, AVG, MAX, MIN, UPPER, LOWER, LENGTH, CONCAT, COALESCE, SIZE, ABS, SQRT, CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP. Functions like TRIM, SUBSTRING, NULLIF, CAST, and MOD are parsed but not yet converted to SQL.
+
 ### Parameters
 - Named parameters: `:paramName` (avoid using HQL keywords like `:end`, `:and` as parameter names)
 - Positional parameters: `?1`, `?2`, etc.
@@ -218,10 +220,10 @@ Main parser class for HQL/JPQL queries.
 
 **Methods:**
 - `ParseTree parse(String query)` - Parse query and return parse tree
-- `QueryAnalysis analyze(String query)` - Analyze query and extract metadata
+- `MetaData analyze(String query)` - Analyze query and extract metadata
 - `boolean isValid(String query)` - Validate query syntax
 
-### QueryAnalysis
+### MetaData
 
 Contains analysis results of a parsed query.
 
@@ -231,6 +233,8 @@ Contains analysis results of a parsed query.
 - `Map<String, Set<String>> getEntityFields()` - Get fields for each entity
 - `List<String> getAliases()` - Get all aliases used
 - `Set<String> getParameters()` - Get all parameters
+- `Map<String, String> getAliasToEntity()` - Get mapping of aliases to entity names
+- `String getEntityForAlias(String alias)` - Get entity name for a given alias
 
 ### HQLToPostgreSQLConverter
 
@@ -239,7 +243,7 @@ Converts HQL/JPQL to PostgreSQL SQL.
 **Methods:**
 - `void registerEntityMapping(String entityName, String tableName)` - Map entity to table
 - `void registerFieldMapping(String entityName, String fieldName, String columnName)` - Map field to column
-- `String convert(String hqlQuery)` - Convert HQL to SQL
+- `String convert(String hqlQuery, MetaData analysis)` - Convert HQL to SQL using query analysis
 
 ## Project Structure
 
@@ -248,17 +252,19 @@ hql-parser/
 ├── src/
 │   ├── main/
 │   │   ├── java/com/raditha/hql/
-│   │   │   ├── analyzer/        # Query analysis components
 │   │   │   ├── converter/       # SQL conversion
 │   │   │   ├── examples/        # Usage examples
 │   │   │   ├── model/           # Data models
-│   │   │   └── parser/          # Core parser
+│   │   │   └── parser/          # Core parser and analysis
 │   │   └── antlr4/com/raditha/hql/grammar/
 │   │       └── HQL.g4           # ANTLR grammar definition
 │   └── test/
 │       └── java/com/raditha/hql/
 │           ├── HQLParserTest.java
-│           └── PostgreSQLConverterTest.java
+│           ├── AdvancedHQLParserTest.java
+│           ├── PostgreSQLConverterTest.java
+│           ├── AdvancedConverterTest.java
+│           └── JoinAnalysisTest.java
 ├── pom.xml
 └── README.md
 ```
@@ -318,6 +324,10 @@ mvn package
 5. **Nested Paths**: Paths like `u.address.city` are parsed but may not convert correctly if intermediate relationships aren't mapped.
 
 6. **Collection Functions**: HQL-specific functions like `SIZE()`, `MEMBER OF` may not have direct PostgreSQL equivalents.
+
+7. **Incomplete Function Support**: While the parser grammar supports all HQL/JPQL functions, the converter currently only implements conversion for: COUNT, SUM, AVG, MAX, MIN, UPPER, LOWER, LENGTH, CONCAT, COALESCE, SIZE, ABS, SQRT, CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP. Functions like TRIM, SUBSTRING, NULLIF, CAST, and MOD are parsed but passed through as-is without proper conversion.
+
+8. **INSERT Statement Conversion**: While INSERT ... SELECT statements can be parsed, the converter does not yet implement SQL conversion for INSERT statements. Only SELECT, UPDATE, and DELETE statements are fully supported for conversion.
 
 ### Field Extraction Behavior
 
