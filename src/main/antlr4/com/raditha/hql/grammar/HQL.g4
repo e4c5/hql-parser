@@ -33,7 +33,16 @@ selectItemList
     ;
 
 selectItem
-    : expression (AS? identifier)?
+    : constructorExpression (AS? identifier)?
+    | expression (AS? identifier)?
+    ;
+
+constructorExpression
+    : NEW path LP constructorArguments? RP
+    ;
+
+constructorArguments
+    : expression (COMMA expression)*
     ;
 
 fromClause
@@ -185,6 +194,26 @@ nonReservedWord
     | NULLS
     | FIRST
     | LAST
+    | NEW
+    | ORDER
+    | GROUP
+    | AVG
+    | COUNT
+    | MAX
+    | MIN
+    | SUM
+    | UPPER
+    | LOWER
+    | TRIM
+    | LENGTH
+    | CONCAT
+    | SUBSTRING
+    | ABS
+    | SQRT
+    | MOD
+    | COALESCE
+    | NULLIF
+    | END
     ;
 
 // Lexer Rules
@@ -197,6 +226,7 @@ INSERT      : [Ii][Nn][Ss][Ee][Rr][Tt];
 INTO        : [Ii][Nn][Tt][Oo];
 SET         : [Ss][Ee][Tt];
 AS          : [Aa][Ss];
+NEW         : [Nn][Ee][Ww];
 JOIN        : [Jj][Oo][Ii][Nn];
 LEFT        : [Ll][Ee][Ff][Tt];
 RIGHT       : [Rr][Ii][Gg][Hh][Tt];
