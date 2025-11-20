@@ -162,16 +162,15 @@ public class HQLToPostgreSQLConverter {
             String expr;
 
             // Handle constructor expression: NEW path LP expressionList? RP
+            // In SQL, we should just return the field list, not the constructor
             if (ctx.NEW() != null && ctx.path() != null) {
-                StringBuilder sb = new StringBuilder("NEW ");
-                // For constructor class names, preserve the fully qualified name as-is
-                sb.append(ctx.path().getText());
-                sb.append("(");
+                // Convert "SELECT NEW DTO(field1, field2)" to "SELECT field1, field2"
                 if (ctx.expressionList() != null) {
-                    sb.append(visit(ctx.expressionList()));
+                    expr = visit(ctx.expressionList());
+                } else {
+                    // Constructor with no arguments - return empty string
+                    expr = "";
                 }
-                sb.append(")");
-                expr = sb.toString();
             } else if (ctx.expression() != null) {
                 // Handle regular expression
                 expr = visit(ctx.expression());
