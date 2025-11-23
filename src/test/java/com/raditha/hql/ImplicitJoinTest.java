@@ -147,5 +147,60 @@ class ImplicitJoinTest {
         assertThat(sql).contains("RIGHT JOIN");
         assertThat(sql).contains("ON");
     }
+
+    @Test
+    void testNonCollectionPropertyEndingWithS() throws ParseException, ConversionException {
+        // Test that properties ending with 's' that are NOT collections are handled correctly
+        // e.g., "status", "address", "process" should be treated as ManyToOne, not OneToMany
+        
+        // Setup: OrderEntity -> Status (ManyToOne relationship)
+        converter.registerEntityMapping("OrderEntity", "orders");
+        converter.registerEntityMapping("Status", "statuses");
+        
+        // "status" ends with 's' but is ManyToOne, so FK is on orders table
+        Map<String, JoinMapping> orderRelationships = new HashMap<>();
+        orderRelationships.put("status", new JoinMapping(
+            "status", "Status", "status_id", "id", JoinType.INNER, "orders", "statuses"
+        ));
+        
+        Map<String, Map<String, JoinMapping>> relationshipMetadata = new HashMap<>();
+        relationshipMetadata.put("OrderEntity", orderRelationships);
+        converter.setRelationshipMetadata(relationshipMetadata);
+
+        // Test query: OrderEntity o JOIN o.status s
+        String hql = "SELECT o FROM OrderEntity o JOIN o.status s";
+        var analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
+
+        // Should generate correct ON clause: FK is on source (orders), not target
+        // o.status_id = s.id (not s.status_id = o.id)
+        assertThat(sql).contains("ON");
+        assertThat(sql).contains("o.status_id = s.id");
+        assertThat(sql).doesNotContain("s.status_id = o.id");
+    }
+
+    @Test
+    void testAddressPropertyManyToOne() throws ParseException, ConversionException {
+        // Test "address" property (ends with 's' but is ManyToOne)
+        converter.registerEntityMapping("User", "users");
+        converter.registerEntityMapping("Address", "addresses");
+        
+        Map<String, JoinMapping> userRelationships = new HashMap<>();
+        userRelationships.put("address", new JoinMapping(
+            "address", "Address", "address_id", "id", JoinType.LEFT, "users", "addresses"
+        ));
+        
+        Map<String, Map<String, JoinMapping>> relationshipMetadata = new HashMap<>();
+        relationshipMetadata.put("User", userRelationships);
+        converter.setRelationshipMetadata(relationshipMetadata);
+
+        String hql = "SELECT u FROM User u LEFT JOIN u.address a";
+        var analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
+
+        // Should generate: u.address_id = a.id (FK on users table)
+        assertThat(sql).contains("ON");
+        assertThat(sql).contains("u.address_id = a.id");
+    }
 }
 

@@ -36,14 +36,17 @@ public class ImplicitJoinOnClauseGenerator {
             return null;
         }
         
-        // Determine join direction based on relationship type
-        // For OneToMany (collection): FK is on target table
-        //   e.g., User u JOIN u.orders o -> o.user_id = u.id
-        // For ManyToOne (direct): FK is on source table  
-        //   e.g., Order o JOIN o.user u -> o.user_id = u.id
+        // Determine join direction based on where the foreign key is located.
+        // 
+        // In JPA relationships:
+        // - @ManyToOne/@OneToOne: FK is on the source entity (the entity with the annotation)
+        //   e.g., Order.user -> FK (user_id) is on orders table
+        // - @OneToMany/@ManyToMany: FK is on the target entity (the "many" side)
+        //   e.g., User.orders -> FK (user_id) is on orders table
         //
-        // Heuristic: If property name is plural (ends with 's'), treat as OneToMany collection
-        boolean isCollectionJoin = isCollectionProperty(propertyName);
+        // We determine this by checking which table the joinColumn logically belongs to.
+        // The joinColumn name typically references the other table (e.g., "user_id" references "users").
+        boolean isCollectionJoin = isCollectionRelationship(mapping, sourceAlias, targetAlias, analysis);
         
         String leftTableAlias;
         String leftColumn;
@@ -103,21 +106,88 @@ public class ImplicitJoinOnClauseGenerator {
     }
     
     /**
-     * Determines if a property represents a collection relationship (OneToMany/ManyToMany).
-     * This is a heuristic based on the property name.
+     * Determines if a relationship is a collection (OneToMany/ManyToMany) based on
+     * where the foreign key is located.
      * 
-     * @param propertyName The property name (e.g., "orders", "user")
-     * @return true if this appears to be a collection relationship
+     * In JPA:
+     * - @ManyToOne/@OneToOne: FK is on source table (the entity with the annotation)
+     * - @OneToMany/@ManyToMany: FK is on target table (the "many" side)
+     * 
+     * We determine this by checking if the joinColumn name suggests it references
+     * the source table. If so, the FK is on the target (OneToMany). Otherwise,
+     * the FK is on the source (ManyToOne).
+     * 
+     * @param mapping The JoinMapping containing relationship information
+     * @param sourceAlias The source entity alias
+     * @param targetAlias The target entity alias
+     * @param analysis The MetaData for entity resolution
+     * @return true if this is a collection relationship (FK on target table)
      */
-    private boolean isCollectionProperty(String propertyName) {
-        if (propertyName == null || propertyName.isEmpty()) {
+    private boolean isCollectionRelationship(JoinMapping mapping, String sourceAlias, 
+                                            String targetAlias, MetaData analysis) {
+        // Get the source and target entity names
+        String sourceEntity = analysis.getEntityForAlias(sourceAlias);
+        String targetEntity = analysis.getEntityForAlias(targetAlias);
+        
+        if (sourceEntity == null || targetEntity == null) {
+            // Fallback: if we can't determine entities, assume ManyToOne (FK on source)
+            // This is the more common case and safer default
             return false;
         }
         
-        // Heuristic: if the property name is plural (ends with 's' and is longer than 1 char),
-        // it's likely a OneToMany or ManyToMany relationship
-        // This works for common cases like "orders", "users", "items", etc.
-        return propertyName.length() > 1 && propertyName.endsWith("s");
+        // Get table names from the mapping
+        String sourceTable = mapping.sourceTable();
+        String targetTable = mapping.targetTable();
+        String joinColumn = mapping.joinColumn();
+        
+        // The joinColumn name typically follows patterns like:
+        // - "user_id" references "users" table
+        // - "order_id" references "orders" table
+        // 
+        // For OneToMany: joinColumn references source table, FK is on target
+        //   e.g., User.orders -> joinColumn="user_id" (references users), FK on orders
+        // For ManyToOne: joinColumn references target table, FK is on source
+        //   e.g., Order.user -> joinColumn="user_id" (references users), FK on orders
+        
+        // Normalize table names and join column for comparison
+        String sourceTableNormalized = sourceTable.toLowerCase().replace("_", "");
+        String targetTableNormalized = targetTable.toLowerCase().replace("_", "");
+        String joinColumnNormalized = joinColumn.toLowerCase().replace("_", "");
+        
+        // Check if joinColumn name contains reference to source table
+        // If joinColumn is like "user_id" and sourceTable is "users", it's OneToMany
+        if (joinColumnNormalized.contains(sourceTableNormalized) || 
+            sourceTableNormalized.contains(extractEntityNameFromColumn(joinColumnNormalized))) {
+            return true; // FK is on target (OneToMany)
+        }
+        
+        // Check if joinColumn name contains reference to target table
+        // If joinColumn is like "user_id" and targetTable is "users", it's ManyToOne
+        if (joinColumnNormalized.contains(targetTableNormalized) ||
+            targetTableNormalized.contains(extractEntityNameFromColumn(joinColumnNormalized))) {
+            return false; // FK is on source (ManyToOne)
+        }
+        
+        // Fallback: Default to ManyToOne (FK on source) as it's more common
+        return false;
+    }
+    
+    /**
+     * Extracts entity name from a column name.
+     * e.g., "user_id" -> "user", "order_id" -> "order"
+     */
+    private String extractEntityNameFromColumn(String columnName) {
+        // Remove common suffixes like "_id", "_fk", etc.
+        if (columnName.endsWith("_id")) {
+            return columnName.substring(0, columnName.length() - 3);
+        }
+        if (columnName.endsWith("_fk")) {
+            return columnName.substring(0, columnName.length() - 3);
+        }
+        if (columnName.endsWith("id")) {
+            return columnName.substring(0, columnName.length() - 2);
+        }
+        return columnName;
     }
 }
 
