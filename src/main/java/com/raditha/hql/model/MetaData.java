@@ -94,25 +94,6 @@ public class MetaData {
     }
     
     /**
-     * Gets all join path information.
-     * 
-     * @return Map of path expressions to join path info
-     */
-    public Map<String, JoinPathInfo> getJoinPaths() {
-        return Collections.unmodifiableMap(joinPaths);
-    }
-    
-    /**
-     * Gets join path information for a specific path expression.
-     * 
-     * @param pathExpression The path expression
-     * @return The join path info, or null if not found
-     */
-    public JoinPathInfo getJoinPath(String pathExpression) {
-        return joinPaths.get(pathExpression);
-    }
-    
-    /**
      * Represents information about an implicit join path.
      */
     public static class JoinPathInfo {
