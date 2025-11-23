@@ -15,49 +15,50 @@ import java.util.*;
  * Uses QueryAnalysis for entity-to-table mapping information.
  */
 public class HQLToPostgreSQLConverter {
-    
+
     private final Map<String, String> entityToTableMap;
     private final Map<String, Map<String, String>> entityFieldToColumnMap;
     private Map<String, Map<String, JoinMapping>> relationshipMetadata; // entity name -> property -> JoinMapping
-    
+
     public HQLToPostgreSQLConverter() {
         this.entityToTableMap = new HashMap<>();
         this.entityFieldToColumnMap = new HashMap<>();
         this.relationshipMetadata = new HashMap<>();
     }
-    
+
     /**
      * Sets the relationship metadata for generating implicit join ON clauses.
      * 
-     * @param relationshipMetadata Map of entity name (as used in HQL) to property name to JoinMapping
+     * @param relationshipMetadata Map of entity name (as used in HQL) to property
+     *                             name to JoinMapping
      */
     public void setRelationshipMetadata(Map<String, Map<String, JoinMapping>> relationshipMetadata) {
         this.relationshipMetadata = relationshipMetadata != null ? relationshipMetadata : new HashMap<>();
     }
-    
+
     /**
      * Register entity to table mapping.
      *
      * @param entityName The entity class name
-     * @param tableName The corresponding database table name
+     * @param tableName  The corresponding database table name
      */
     public void registerEntityMapping(String entityName, String tableName) {
         entityToTableMap.put(entityName, tableName);
     }
-    
+
     /**
      * Register field to column mapping for an entity.
      * 
      * @param entityName The entity class name
-     * @param fieldName The field name in the entity
+     * @param fieldName  The field name in the entity
      * @param columnName The corresponding column name in the database
      */
     public void registerFieldMapping(String entityName, String fieldName, String columnName) {
         entityFieldToColumnMap
-            .computeIfAbsent(entityName, k -> new HashMap<>())
-            .put(fieldName, columnName);
+                .computeIfAbsent(entityName, k -> new HashMap<>())
+                .put(fieldName, columnName);
     }
-    
+
     /**
      * Converts an HQL/JPQL query to PostgreSQL SQL using QueryAnalysis.
      * 
@@ -71,22 +72,21 @@ public class HQLToPostgreSQLConverter {
         HQLLexer lexer = new HQLLexer(input);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
         HQLParser parser = new HQLParser(tokens);
-        
+
         parser.removeErrorListeners();
         parser.addErrorListener(new BaseErrorListener() {
             @Override
             public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol,
-                                   int line, int charPositionInLine, String msg, RecognitionException e) {
+                    int line, int charPositionInLine, String msg, RecognitionException e) {
                 throw new RuntimeException("Parse error at " + line + ":" + charPositionInLine + " " + msg);
             }
         });
-        
+
         ParseTree tree = parser.statement();
-        
+
         PostgreSQLConversionVisitor visitor = new PostgreSQLConversionVisitor(
-            entityToTableMap, entityFieldToColumnMap, analysis, relationshipMetadata
-        );
-        
+                entityToTableMap, entityFieldToColumnMap, analysis, relationshipMetadata);
+
         return visitor.visit(tree);
     }
 
@@ -98,15 +98,15 @@ public class HQLToPostgreSQLConverter {
         private final Map<String, String> entityToTableMap;
         private final Map<String, Map<String, String>> entityFieldToColumnMap;
         private final Map<String, Map<String, JoinMapping>> relationshipMetadata;
-        private String currentEntity = null;  // For UPDATE/DELETE without alias
-        private String updateAlias = null;    // For UPDATE with alias
+        private String currentEntity = null; // For UPDATE/DELETE without alias
+        private String updateAlias = null; // For UPDATE with alias
         private final MetaData analysis;
         private final ImplicitJoinOnClauseGenerator onClauseGenerator;
 
         public PostgreSQLConversionVisitor(Map<String, String> entityToTableMap,
-                                          Map<String, Map<String, String>> entityFieldToColumnMap,
-                                          MetaData analysis,
-                                          Map<String, Map<String, JoinMapping>> relationshipMetadata) {
+                Map<String, Map<String, String>> entityFieldToColumnMap,
+                MetaData analysis,
+                Map<String, Map<String, JoinMapping>> relationshipMetadata) {
             this.entityToTableMap = entityToTableMap;
             this.entityFieldToColumnMap = entityFieldToColumnMap;
             this.analysis = analysis;
@@ -149,15 +149,15 @@ public class HQLToPostgreSQLConverter {
 
             return sql.toString();
         }
-        
+
         @Override
         public String visitSelectClause(SelectClauseContext ctx) {
             StringBuilder sql = new StringBuilder("SELECT");
-            
+
             if (ctx.DISTINCT() != null) {
                 sql.append(" DISTINCT");
             }
-            
+
             sql.append(" ");
             sql.append(visit(ctx.selectItemList()));
 
@@ -261,14 +261,14 @@ public class HQLToPostgreSQLConverter {
                     String sourceAlias = parts[0];
                     String propertyName = parts[1];
                     String sourceEntity = analysis.getEntityForAlias(sourceAlias);
-                    
+
                     if (sourceEntity != null) {
                         Map<String, JoinMapping> entityMappings = relationshipMetadata.get(sourceEntity);
                         if (entityMappings != null) {
                             JoinMapping mapping = entityMappings.get(propertyName);
                             if (mapping != null) {
                                 String onClause = onClauseGenerator.generateOnClause(
-                                    sourceAlias, pathText, joinAlias, mapping, analysis);
+                                        sourceAlias, pathText, joinAlias, mapping, analysis);
                                 if (onClause != null) {
                                     sql.append(" ON ").append(onClause);
                                 }
@@ -297,7 +297,7 @@ public class HQLToPostgreSQLConverter {
         public String visitWhereClause(WhereClauseContext ctx) {
             return "WHERE " + visit(ctx.expression());
         }
-        
+
         @Override
         public String visitGroupByClause(GroupByClauseContext ctx) {
             return "GROUP BY " + visit(ctx.expressionList());
@@ -316,7 +316,7 @@ public class HQLToPostgreSQLConverter {
             }
             return "ORDER BY " + String.join(", ", items);
         }
-        
+
         @Override
         public String visitOrderByItem(OrderByItemContext ctx) {
             StringBuilder sql = new StringBuilder(visit(ctx.expression()));
@@ -346,7 +346,8 @@ public class HQLToPostgreSQLConverter {
             StringBuilder sql = new StringBuilder("UPDATE ");
             sql.append(tableName);
 
-            // Include alias if present (required for PostgreSQL when using qualified column references)
+            // Include alias if present (required for PostgreSQL when using qualified column
+            // references)
             if (updateAlias != null) {
                 sql.append(" ");
                 sql.append(updateAlias);
@@ -385,7 +386,7 @@ public class HQLToPostgreSQLConverter {
 
             return sql.toString();
         }
-        
+
         @Override
         public String visitSetClause(SetClauseContext ctx) {
             List<String> assignments = new ArrayList<>();
@@ -411,7 +412,8 @@ public class HQLToPostgreSQLConverter {
                 String first = ids.get(0).getText();
                 String second = ids.get(1).getText();
                 String entityName = analysis.getEntityForAlias(first);
-                if (entityName == null) entityName = first;
+                if (entityName == null)
+                    entityName = first;
 
                 // If this matches the update alias, drop it for the assignment LHS
                 if (updateAlias != null && first.equals(updateAlias) && entityName.equals(currentEntity)) {
@@ -439,15 +441,17 @@ public class HQLToPostgreSQLConverter {
         }
 
         private String toSnakeCase(String input) {
-            if (input == null || input.isEmpty()) return input;
-            if (input.indexOf('_') >= 0 || input.equals(input.toLowerCase())) return input;
+            if (input == null || input.isEmpty())
+                return input;
+            if (input.indexOf('_') >= 0 || input.equals(input.toLowerCase()))
+                return input;
             StringBuilder sb = new StringBuilder();
             char[] chars = input.toCharArray();
             for (int i = 0; i < chars.length; i++) {
                 char c = chars[i];
                 if (Character.isUpperCase(c)) {
                     if (i > 0 && (Character.isLowerCase(chars[i - 1]) || Character.isDigit(chars[i - 1]) ||
-                        (i + 1 < chars.length && Character.isLowerCase(chars[i + 1])))) {
+                            (i + 1 < chars.length && Character.isLowerCase(chars[i + 1])))) {
                         sb.append('_');
                     }
                     sb.append(Character.toLowerCase(c));
@@ -465,7 +469,7 @@ public class HQLToPostgreSQLConverter {
             if (identifiers.size() == 1) {
                 // Unqualified field - check if we can map it
                 String fieldName = identifiers.get(0).getText();
-                
+
                 // If we're in UPDATE/DELETE and have a current entity, try to map the field
                 if (currentEntity != null && entityFieldToColumnMap.containsKey(currentEntity)) {
                     Map<String, String> fieldMappings = entityFieldToColumnMap.get(currentEntity);
@@ -487,15 +491,23 @@ public class HQLToPostgreSQLConverter {
 
                 // Check if first is an alias - use QueryAnalysis instead of local map
                 String entityName = analysis.getEntityForAlias(first);
-                if (entityName == null) {
-                    // Not an alias, might be entity name itself
-                    entityName = first;
+                boolean isAlias = (entityName != null);
+
+                if (!isAlias) {
+                    // Check if it is a known entity
+                    if (entityToTableMap.containsKey(first)) {
+                        entityName = first;
+                    } else {
+                        // Not an alias and not a known entity - likely a fully qualified name (enum,
+                        // constant)
+                        return ctx.getText();
+                    }
                 }
 
                 // Get column name mapping
                 String columnName = second;
                 if (entityFieldToColumnMap.containsKey(entityName) &&
-                    entityFieldToColumnMap.get(entityName).containsKey(second)) {
+                        entityFieldToColumnMap.get(entityName).containsKey(second)) {
                     columnName = entityFieldToColumnMap.get(entityName).get(second);
                 } else {
                     // Apply snake_case fallback for unmapped fields
@@ -510,7 +522,8 @@ public class HQLToPostgreSQLConverter {
 
         @Override
         public String visitParameter(ParameterContext ctx) {
-            // PostgreSQL uses $1, $2, etc., but we'll keep the original format for simplicity
+            // PostgreSQL uses $1, $2, etc., but we'll keep the original format for
+            // simplicity
             return ctx.getText();
         }
 
@@ -537,54 +550,54 @@ public class HQLToPostgreSQLConverter {
             }
             return "";
         }
-        
+
         // Override all expression visitor methods to handle them explicitly
         @Override
         public String visitPrimaryExpression(PrimaryExpressionContext ctx) {
             return visit(ctx.primary());
         }
-        
+
         @Override
         public String visitEqualityExpression(EqualityExpressionContext ctx) {
             List<ExpressionContext> expressions = ctx.expression();
             return visit(expressions.get(0)) + " " + ctx.op.getText() + " " + visit(expressions.get(1));
         }
-        
+
         @Override
         public String visitComparisonExpression(ComparisonExpressionContext ctx) {
             List<ExpressionContext> expressions = ctx.expression();
             return visit(expressions.get(0)) + " " + ctx.op.getText() + " " + visit(expressions.get(1));
         }
-        
+
         @Override
         public String visitAdditiveExpression(AdditiveExpressionContext ctx) {
             List<ExpressionContext> expressions = ctx.expression();
             return visit(expressions.get(0)) + " " + ctx.op.getText() + " " + visit(expressions.get(1));
         }
-        
+
         @Override
         public String visitMultiplicativeExpression(MultiplicativeExpressionContext ctx) {
             List<ExpressionContext> expressions = ctx.expression();
             return visit(expressions.get(0)) + " " + ctx.op.getText() + " " + visit(expressions.get(1));
         }
-        
+
         @Override
         public String visitAndExpression(AndExpressionContext ctx) {
             List<ExpressionContext> expressions = ctx.expression();
             return visit(expressions.get(0)) + " AND " + visit(expressions.get(1));
         }
-        
+
         @Override
         public String visitOrExpression(OrExpressionContext ctx) {
             List<ExpressionContext> expressions = ctx.expression();
             return visit(expressions.get(0)) + " OR " + visit(expressions.get(1));
         }
-        
+
         @Override
         public String visitNotExpression(NotExpressionContext ctx) {
             return "NOT " + visit(ctx.expression());
         }
-        
+
         @Override
         public String visitIsNullExpression(IsNullExpressionContext ctx) {
             String result = visit(ctx.expression()) + " IS";
@@ -594,7 +607,7 @@ public class HQLToPostgreSQLConverter {
             result += " NULL";
             return result;
         }
-        
+
         @Override
         public String visitBetweenExpression(BetweenExpressionContext ctx) {
             List<ExpressionContext> expressions = ctx.expression();
@@ -605,7 +618,7 @@ public class HQLToPostgreSQLConverter {
             result += " BETWEEN " + visit(expressions.get(1)) + " AND " + visit(expressions.get(2));
             return result;
         }
-        
+
         @Override
         public String visitInExpression(InExpressionContext ctx) {
             String result = visit(ctx.expression());
@@ -621,7 +634,7 @@ public class HQLToPostgreSQLConverter {
             result += ")";
             return result;
         }
-        
+
         @Override
         public String visitLikeExpression(LikeExpressionContext ctx) {
             List<ExpressionContext> expressions = ctx.expression();
@@ -635,7 +648,7 @@ public class HQLToPostgreSQLConverter {
             }
             return result;
         }
-        
+
         @Override
         public String visitMemberOfExpression(MemberOfExpressionContext ctx) {
             String result = visit(ctx.expression()) + " MEMBER";
@@ -645,32 +658,32 @@ public class HQLToPostgreSQLConverter {
             result += " " + visit(ctx.path());
             return result;
         }
-        
+
         @Override
         public String visitExistsExpression(ExistsExpressionContext ctx) {
             return "EXISTS (" + visit(ctx.selectStatement()) + ")";
         }
-        
+
         @Override
         public String visitParenthesizedExpression(ParenthesizedExpressionContext ctx) {
             return "(" + visit(ctx.expression()) + ")";
         }
-        
+
         @Override
         public String visitMemberAccessExpression(MemberAccessExpressionContext ctx) {
             return visit(ctx.expression()) + "." + ctx.identifier().getText();
         }
-        
+
         @Override
         public String visitFunctionCallExpression(FunctionCallExpressionContext ctx) {
             return visit(ctx.functionCall());
         }
-        
+
         @Override
         public String visitCaseExpr(CaseExprContext ctx) {
             return visit(ctx.caseExpression());
         }
-        
+
         @Override
         public String visitPrimary(PrimaryContext ctx) {
             if (ctx.literal() != null) {
@@ -684,14 +697,15 @@ public class HQLToPostgreSQLConverter {
             }
             return "";
         }
-        
+
         @Override
         public String visitCaseExpression(CaseExpressionContext ctx) {
             StringBuilder sb = new StringBuilder("CASE");
             List<ExpressionContext> expressions = ctx.expression();
             int whenClauseCount = ctx.whenClause().size();
 
-            // Determine if this is a simple CASE (CASE expr WHEN...) or searched CASE (CASE WHEN...)
+            // Determine if this is a simple CASE (CASE expr WHEN...) or searched CASE (CASE
+            // WHEN...)
             // Simple CASE has: 1 initial expr + (2 * whenClauseCount) + (ELSE ? 1 : 0)
             // Searched CASE has: (2 * whenClauseCount) + (ELSE ? 1 : 0)
             int expectedSearchedCaseExprs = whenClauseCount * 2 + (ctx.ELSE() != null ? 1 : 0);
@@ -720,13 +734,13 @@ public class HQLToPostgreSQLConverter {
             sb.append(" END");
             return sb.toString();
         }
-        
+
         @Override
         public String visitWhenClause(WhenClauseContext ctx) {
             List<ExpressionContext> expressions = ctx.expression();
             return "WHEN " + visit(expressions.get(0)) + " THEN " + visit(expressions.get(1));
         }
-        
+
         @Override
         public String visitFunctionCall(FunctionCallContext ctx) {
             // Handle specific function patterns
@@ -774,7 +788,7 @@ public class HQLToPostgreSQLConverter {
             }
             return "";
         }
-        
+
         @Override
         protected String aggregateResult(String aggregate, String nextResult) {
             // Should not be called anymore since we handle everything explicitly
@@ -786,7 +800,7 @@ public class HQLToPostgreSQLConverter {
             }
             return aggregate + nextResult;
         }
-        
+
         @Override
         protected String defaultResult() {
             return "";
