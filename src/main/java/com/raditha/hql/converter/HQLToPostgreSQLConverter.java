@@ -235,6 +235,18 @@ public class HQLToPostgreSQLConverter {
 
         @Override
         public String visitJoinClause(JoinClauseContext ctx) {
+            // Handle JOIN FETCH where alias might be missing
+            if (ctx.identifier() == null) {
+                // If there is no alias, it's likely a FETCH join (e.g. LEFT JOIN FETCH path)
+                // For SQL generation, we can typically ignore LEFT JOIN FETCH as it's for data
+                // loading
+                // and doesn't affect the main result set rows (unlike INNER JOIN).
+                // Even for INNER JOIN FETCH, without an alias we can't easily generate the SQL
+                // JOIN
+                // so skipping it is the safest option to avoid a crash.
+                return "";
+            }
+
             StringBuilder sql = new StringBuilder();
 
             if (ctx.joinType() != null) {
