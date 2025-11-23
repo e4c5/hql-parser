@@ -514,7 +514,14 @@ public class HQLToPostgreSQLConverter {
                     columnName = toSnakeCase(columnName);
                 }
 
-                return first + "." + columnName;
+                StringBuilder result = new StringBuilder(first).append(".").append(columnName);
+
+                // Append any remaining parts of the path
+                for (int i = 2; i < identifiers.size(); i++) {
+                    result.append(".").append(identifiers.get(i).getText());
+                }
+
+                return result.toString();
             }
 
             return ctx.getText();
