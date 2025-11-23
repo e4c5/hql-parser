@@ -12,6 +12,7 @@ public class MetaData {
     private final Map<String, String> aliasToEntity; // alias -> entity
     private final Map<String, Set<String>> entityFields; // entity -> fields
     private final Set<String> parameters;
+    private final Map<String, JoinPathInfo> joinPaths; // path expression -> join path info
     
     public MetaData(String originalQuery, QueryType queryType) {
         this.originalQuery = originalQuery;
@@ -20,6 +21,7 @@ public class MetaData {
         this.aliasToEntity = new LinkedHashMap<>();
         this.entityFields = new LinkedHashMap<>();
         this.parameters = new LinkedHashSet<>();
+        this.joinPaths = new LinkedHashMap<>();
     }
     
     public void addEntity(String entityName) {
@@ -77,6 +79,70 @@ public class MetaData {
      */
     public String getEntityForAlias(String alias) {
         return aliasToEntity.get(alias);
+    }
+    
+    /**
+     * Adds information about an implicit join path.
+     * 
+     * @param sourceAlias The alias of the source entity
+     * @param pathExpression The path expression (e.g., "u.orders")
+     * @param targetAlias The alias of the target entity
+     * @param targetEntity The target entity name
+     */
+    public void addJoinPath(String sourceAlias, String pathExpression, String targetAlias, String targetEntity) {
+        joinPaths.put(pathExpression, new JoinPathInfo(sourceAlias, pathExpression, targetAlias, targetEntity));
+    }
+    
+    /**
+     * Gets all join path information.
+     * 
+     * @return Map of path expressions to join path info
+     */
+    public Map<String, JoinPathInfo> getJoinPaths() {
+        return Collections.unmodifiableMap(joinPaths);
+    }
+    
+    /**
+     * Gets join path information for a specific path expression.
+     * 
+     * @param pathExpression The path expression
+     * @return The join path info, or null if not found
+     */
+    public JoinPathInfo getJoinPath(String pathExpression) {
+        return joinPaths.get(pathExpression);
+    }
+    
+    /**
+     * Represents information about an implicit join path.
+     */
+    public static class JoinPathInfo {
+        private final String sourceAlias;
+        private final String pathExpression;
+        private final String targetAlias;
+        private final String targetEntity;
+
+        public JoinPathInfo(String sourceAlias, String pathExpression, String targetAlias, String targetEntity) {
+            this.sourceAlias = sourceAlias;
+            this.pathExpression = pathExpression;
+            this.targetAlias = targetAlias;
+            this.targetEntity = targetEntity;
+        }
+
+        public String sourceAlias() {
+            return sourceAlias;
+        }
+
+        public String pathExpression() {
+            return pathExpression;
+        }
+
+        public String targetAlias() {
+            return targetAlias;
+        }
+
+        public String targetEntity() {
+            return targetEntity;
+        }
     }
     
     @Override

@@ -18,10 +18,21 @@ public class HQLToPostgreSQLConverter {
     
     private final Map<String, String> entityToTableMap;
     private final Map<String, Map<String, String>> entityFieldToColumnMap;
+    private Map<String, Map<String, JoinMapping>> relationshipMetadata; // entity name -> property -> JoinMapping
     
     public HQLToPostgreSQLConverter() {
         this.entityToTableMap = new HashMap<>();
         this.entityFieldToColumnMap = new HashMap<>();
+        this.relationshipMetadata = new HashMap<>();
+    }
+    
+    /**
+     * Sets the relationship metadata for generating implicit join ON clauses.
+     * 
+     * @param relationshipMetadata Map of entity name (as used in HQL) to property name to JoinMapping
+     */
+    public void setRelationshipMetadata(Map<String, Map<String, JoinMapping>> relationshipMetadata) {
+        this.relationshipMetadata = relationshipMetadata != null ? relationshipMetadata : new HashMap<>();
     }
     
     /**
@@ -73,7 +84,7 @@ public class HQLToPostgreSQLConverter {
         ParseTree tree = parser.statement();
         
         PostgreSQLConversionVisitor visitor = new PostgreSQLConversionVisitor(
-            entityToTableMap, entityFieldToColumnMap, analysis
+            entityToTableMap, entityFieldToColumnMap, analysis, relationshipMetadata
         );
         
         return visitor.visit(tree);
@@ -86,16 +97,21 @@ public class HQLToPostgreSQLConverter {
 
         private final Map<String, String> entityToTableMap;
         private final Map<String, Map<String, String>> entityFieldToColumnMap;
+        private final Map<String, Map<String, JoinMapping>> relationshipMetadata;
         private String currentEntity = null;  // For UPDATE/DELETE without alias
         private String updateAlias = null;    // For UPDATE with alias
         private final MetaData analysis;
+        private final ImplicitJoinOnClauseGenerator onClauseGenerator;
 
         public PostgreSQLConversionVisitor(Map<String, String> entityToTableMap,
                                           Map<String, Map<String, String>> entityFieldToColumnMap,
-                                          MetaData analysis) {
+                                          MetaData analysis,
+                                          Map<String, Map<String, JoinMapping>> relationshipMetadata) {
             this.entityToTableMap = entityToTableMap;
             this.entityFieldToColumnMap = entityFieldToColumnMap;
             this.analysis = analysis;
+            this.relationshipMetadata = relationshipMetadata != null ? relationshipMetadata : new HashMap<>();
+            this.onClauseGenerator = new ImplicitJoinOnClauseGenerator();
         }
 
         @Override
@@ -235,7 +251,31 @@ public class HQLToPostgreSQLConverter {
             sql.append(" ").append(joinAlias);
 
             if (ctx.expression() != null) {
+                // Explicit ON clause - use it as-is
                 sql.append(" ON ").append(visit(ctx.expression()));
+            } else if (ctx.path() != null) {
+                // Implicit join - generate ON clause from relationship metadata
+                String pathText = ctx.path().getText();
+                String[] parts = pathText.split("\\.");
+                if (parts.length == 2) {
+                    String sourceAlias = parts[0];
+                    String propertyName = parts[1];
+                    String sourceEntity = analysis.getEntityForAlias(sourceAlias);
+                    
+                    if (sourceEntity != null) {
+                        Map<String, JoinMapping> entityMappings = relationshipMetadata.get(sourceEntity);
+                        if (entityMappings != null) {
+                            JoinMapping mapping = entityMappings.get(propertyName);
+                            if (mapping != null) {
+                                String onClause = onClauseGenerator.generateOnClause(
+                                    sourceAlias, pathText, joinAlias, mapping, analysis);
+                                if (onClause != null) {
+                                    sql.append(" ON ").append(onClause);
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             return sql.toString();

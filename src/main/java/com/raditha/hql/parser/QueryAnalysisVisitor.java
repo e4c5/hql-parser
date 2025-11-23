@@ -212,11 +212,13 @@ public class QueryAnalysisVisitor extends HQLBaseVisitor<Void> {
             // We need to infer the entity name from the collection field name
             String pathText = ctx.path().getText();
             String entityName = pathText;
+            String sourceAlias = null;
             
             // Try to infer entity name from collection field
             if (pathText.contains(".")) {
                 String[] parts = pathText.split("\\.");
                 if (parts.length >= 2) {
+                    sourceAlias = parts[0];
                     String fieldName = parts[parts.length - 1];
                     
                     // Use heuristic to determine entity name from collection field
@@ -238,6 +240,11 @@ public class QueryAnalysisVisitor extends HQLBaseVisitor<Void> {
             }
             
             analysis.addEntity(entityName, alias);
+            
+            // Track implicit join if ON clause is missing
+            if (ctx.expression() == null && sourceAlias != null && alias != null) {
+                analysis.addJoinPath(sourceAlias, pathText, alias, entityName);
+            }
         }
         
         // Visit the ON condition if present
