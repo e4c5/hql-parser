@@ -122,7 +122,7 @@ parameter
 
 functionCall
     : AVG LP DISTINCT? expression RP
-    | COUNT LP DISTINCT? expression RP
+    | COUNT LP (DISTINCT? expression | STAR) RP
     | MAX LP expression RP
     | MIN LP expression RP
     | SUM LP DISTINCT? expression RP

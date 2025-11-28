@@ -768,6 +768,9 @@ public class HQLToPostgreSQLConverter {
                 String distinct = ctx.DISTINCT() != null ? "DISTINCT " : "";
                 return "AVG(" + distinct + visit(expressions.get(0)) + ")";
             } else if (ctx.COUNT() != null) {
+                if (ctx.STAR() != null) {
+                    return "COUNT(*)";
+                }
                 String distinct = ctx.DISTINCT() != null ? "DISTINCT " : "";
                 return "COUNT(" + distinct + visit(expressions.get(0)) + ")";
             } else if (ctx.SUM() != null) {
