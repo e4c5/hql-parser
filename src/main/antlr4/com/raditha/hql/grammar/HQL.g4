@@ -95,6 +95,7 @@ expression
     | expression IS NOT? NULL                                      # IsNullExpression
     | expression NOT? BETWEEN expression AND expression           # BetweenExpression
     | expression NOT? IN LP (expressionList | selectStatement) RP # InExpression
+    | expression NOT? IN parameter                                 # InParameterExpression
     | expression NOT? LIKE expression (ESCAPE STRING)?            # LikeExpression
     | expression MEMBER OF? path                                   # MemberOfExpression
     | EXISTS LP selectStatement RP                                 # ExistsExpression

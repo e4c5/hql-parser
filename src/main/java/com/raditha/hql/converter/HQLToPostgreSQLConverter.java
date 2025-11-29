@@ -655,6 +655,18 @@ public class HQLToPostgreSQLConverter {
         }
 
         @Override
+        public String visitInParameterExpression(InParameterExpressionContext ctx) {
+            String result = visit(ctx.expression());
+            if (ctx.NOT() != null) {
+                result += " NOT";
+            }
+            result += " IN (";
+            result += visit(ctx.parameter());
+            result += ")";
+            return result;
+        }
+
+        @Override
         public String visitLikeExpression(LikeExpressionContext ctx) {
             List<ExpressionContext> expressions = ctx.expression();
             String result = visit(expressions.get(0));
@@ -734,7 +746,7 @@ public class HQLToPostgreSQLConverter {
             int exprIndex = 0;
 
             // For simple CASE, add the initial expression
-            if (isSimpleCase && expressions != null && !expressions.isEmpty()) {
+            if (isSimpleCase && !expressions.isEmpty()) {
                 sb.append(" ").append(visit(expressions.get(exprIndex++)));
             }
 
