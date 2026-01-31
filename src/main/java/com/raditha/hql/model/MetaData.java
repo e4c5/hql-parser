@@ -83,7 +83,7 @@ public class MetaData {
     
     /**
      * Adds information about an implicit join path.
-     * 
+     *
      * @param sourceAlias The alias of the source entity
      * @param pathExpression The path expression (e.g., "u.orders")
      * @param targetAlias The alias of the target entity
@@ -91,6 +91,14 @@ public class MetaData {
      */
     public void addJoinPath(String sourceAlias, String pathExpression, String targetAlias, String targetEntity) {
         joinPaths.put(pathExpression, new JoinPathInfo(sourceAlias, pathExpression, targetAlias, targetEntity));
+    }
+
+    /**
+     * Gets all join path information.
+     * @return An unmodifiable map of path expression to JoinPathInfo
+     */
+    public Map<String, JoinPathInfo> getJoinPaths() {
+        return Collections.unmodifiableMap(joinPaths);
     }
     
     /**

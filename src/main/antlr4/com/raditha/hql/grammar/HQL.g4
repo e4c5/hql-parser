@@ -173,7 +173,7 @@ literal
     ;
 
 entityName
-    : identifier
+    : path
     ;
 
 identifier

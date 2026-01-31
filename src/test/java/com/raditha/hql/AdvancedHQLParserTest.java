@@ -320,10 +320,40 @@ class AdvancedHQLParserTest {
     @Test
     void testCurrentDateTimeFunctions() throws ParseException {
         String query = "SELECT CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP FROM User u";
-        
+
         MetaData analysis = parser.analyze(query);
-        
+
         assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
         assertThat(analysis.getEntityNames()).contains("User");
+    }
+
+    // ========== Scalar Subquery Tests ==========
+
+    @Test
+    void testScalarSubqueryWithPathInFrom() throws ParseException {
+        // Scalar subquery navigating through a collection relationship
+        String query = "SELECT u.name, (SELECT count(o.id) FROM u.orders o WHERE o.status = 'ACTIVE') " +
+                      "FROM User u";
+
+        MetaData analysis = parser.analyze(query);
+
+        assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
+        assertThat(analysis.getEntityNames()).contains("User");
+        assertThat(analysis.getAliases()).contains("u", "o");
+    }
+
+    @Test
+    void testScalarSubqueryInSelectWithCase() throws ParseException {
+        // Complex scalar subquery with CASE expression, similar to the failing query
+        String query = "SELECT cs.name, " +
+                      "(select count(rcs.slotId) from cs.slots rcs where rcs.status = 'ACT'), " +
+                      "(select case when count(rcs) > 0 then false else true end from cs.slots rcs where rcs.isAvailable = true) " +
+                      "FROM CalendarSlot cs";
+
+        MetaData analysis = parser.analyze(query);
+
+        assertThat(analysis.getQueryType()).isEqualTo(QueryType.SELECT);
+        assertThat(analysis.getEntityNames()).contains("CalendarSlot");
+        assertThat(analysis.getAliases()).contains("cs", "rcs");
     }
 }
