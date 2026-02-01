@@ -718,7 +718,7 @@ public class HQLToPostgreSQLConverter {
         @Override
         public String visitPrimary(PrimaryContext ctx) {
             if (ctx.literal() != null) {
-                return ctx.literal().getText();
+                return stripNumericSuffix(ctx.literal().getText());
             } else if (ctx.path() != null) {
                 return visit(ctx.path());
             } else if (ctx.parameter() != null) {
@@ -838,6 +838,21 @@ public class HQLToPostgreSQLConverter {
         @Override
         protected String defaultResult() {
             return "";
+        }
+
+        /**
+         * Strips Java-style type suffixes (L, l, F, f, D, d) from numeric literals.
+         * SQL doesn't use these suffixes, so they must be removed during conversion.
+         */
+        private String stripNumericSuffix(String literal) {
+            if (literal == null || literal.isEmpty()) {
+                return literal;
+            }
+            char lastChar = literal.charAt(literal.length() - 1);
+            if (lastChar == 'L' || lastChar == 'l' || lastChar == 'F' || lastChar == 'f' || lastChar == 'D' || lastChar == 'd') {
+                return literal.substring(0, literal.length() - 1);
+            }
+            return literal;
         }
     }
 }

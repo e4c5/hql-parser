@@ -293,8 +293,8 @@ QUESTION_MARK : '?';
 
 // Literals
 STRING      : '\'' (~['\r\n] | '\'\'')* '\'';
-INTEGER     : [0-9]+;
-DECIMAL     : [0-9]+ '.' [0-9]* | '.' [0-9]+;
+INTEGER     : [0-9]+ [Ll]?;
+DECIMAL     : ([0-9]+ '.' [0-9]* | '.' [0-9]+) [FfDd]?;
 IDENTIFIER  : [a-zA-Z_] [a-zA-Z0-9_]*;
 
 // Whitespace

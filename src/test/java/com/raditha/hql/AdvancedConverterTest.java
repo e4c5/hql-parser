@@ -400,9 +400,29 @@ class AdvancedConverterTest {
         String hql = "SELECT u FROM User u WHERE u.age >= 18 AND u.age <= 65 AND u.status != 'INACTIVE'";
         MetaData analysis = parser.analyze(hql);
         String sql = converter.convert(hql, analysis);
-        
+
         assertThat(sql).contains("u.age >= 18");
         assertThat(sql).contains("u.age <= 65");
         assertThat(sql).contains("u.status != 'INACTIVE'");
+    }
+
+    @Test
+    void testLongLiteralInCaseExpression() throws ParseException, ConversionException {
+        String hql = "SELECT SUM(CASE WHEN u.status = 'ACTIVE' THEN 1L ELSE 0 END) FROM User u";
+        MetaData analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
+
+        assertThat(sql).contains("SUM(CASE WHEN u.status = 'ACTIVE' THEN 1 ELSE 0 END)");
+    }
+
+    @Test
+    void testMultipleLongLiteralsInCaseExpressions() throws ParseException, ConversionException {
+        String hql = "SELECT SUM(CASE WHEN u.status = 'ACTIVE' THEN 1L ELSE 0L END), " +
+                    "SUM(CASE WHEN u.status = 'INACTIVE' THEN 1L ELSE 0L END) FROM User u";
+        MetaData analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
+
+        assertThat(sql).contains("SUM(CASE WHEN u.status = 'ACTIVE' THEN 1 ELSE 0 END)");
+        assertThat(sql).contains("SUM(CASE WHEN u.status = 'INACTIVE' THEN 1 ELSE 0 END)");
     }
 }
