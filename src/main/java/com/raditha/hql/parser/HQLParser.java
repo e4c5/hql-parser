@@ -23,7 +23,9 @@ public class HQLParser {
         try {
             CharStream input = CharStreams.fromString(query);
             HQLLexer lexer = new HQLLexer(input);
-            CommonTokenStream tokens = new CommonTokenStream(lexer);
+            // Use ParameterAwareTokenStream to allow keywords as parameter names
+            ParameterAwareTokenStream tokens = new ParameterAwareTokenStream(lexer);
+            tokens.rewriteParameterNames(); // Rewrite keyword tokens after COLON before parsing
             com.raditha.hql.grammar.HQLParser parser = new com.raditha.hql.grammar.HQLParser(tokens);
             
             // Add error listener

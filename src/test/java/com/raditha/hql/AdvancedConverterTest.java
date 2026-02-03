@@ -425,4 +425,66 @@ class AdvancedConverterTest {
         assertThat(sql).contains("SUM(CASE WHEN u.status = 'ACTIVE' THEN 1 ELSE 0 END)");
         assertThat(sql).contains("SUM(CASE WHEN u.status = 'INACTIVE' THEN 1 ELSE 0 END)");
     }
+
+    @Test
+    void testReservedWordAsParameterName() throws ParseException, ConversionException {
+        // Test that reserved words like 'from' and 'to' can be used as parameter names
+        String hql = "SELECT u FROM User u WHERE u.startDate > :from AND u.endDate < :to";
+        MetaData analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
+
+        assertThat(sql).contains(":from");
+        assertThat(sql).contains(":to");
+        assertThat(sql).contains("u.start_date > :from");
+        assertThat(sql).contains("u.end_date < :to");
+    }
+
+    @Test
+    void testMultipleReservedWordsAsParameterNames() throws ParseException, ConversionException {
+        // Test multiple reserved words as parameter names
+        String hql = "SELECT u FROM User u WHERE u.id IN :in AND u.status = :select AND u.type = :where";
+        MetaData analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
+
+        assertThat(sql).contains(":in");
+        assertThat(sql).contains(":select");
+        assertThat(sql).contains(":where");
+    }
+
+    @Test
+    void testSimpleTrimFunction() throws ParseException, ConversionException {
+        String hql = "SELECT TRIM(u.userName) FROM User u";
+        MetaData analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
+
+        assertThat(sql).containsIgnoringCase("TRIM(");
+        assertThat(sql).contains("user_name");
+    }
+
+    @Test
+    void testNestedTrimConcat() throws ParseException, ConversionException {
+        // Test nested TRIM and CONCAT functions like in the failing query
+        String hql = "SELECT TRIM(CONCAT(u.firstName, CONCAT(' ', u.lastName))) FROM User u";
+        MetaData analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
+
+        assertThat(sql).containsIgnoringCase("TRIM(");
+        assertThat(sql).containsIgnoringCase("CONCAT(");
+        assertThat(sql).contains("first_name");
+        assertThat(sql).contains("last_name");
+    }
+
+    @Test
+    void testDeeplyNestedTrimConcat() throws ParseException, ConversionException {
+        // Test deeply nested TRIM/CONCAT like the actual failing query
+        String hql = "SELECT TRIM(CONCAT(TRIM(CONCAT(u.firstName, CONCAT(' ', u.lastName))), CONCAT(' ', u.userName))) FROM User u";
+        MetaData analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
+
+        assertThat(sql).containsIgnoringCase("TRIM(");
+        assertThat(sql).containsIgnoringCase("CONCAT(");
+        assertThat(sql).contains("first_name");
+        assertThat(sql).contains("last_name");
+        assertThat(sql).contains("user_name");
+    }
 }

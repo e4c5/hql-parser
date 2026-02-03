@@ -5,6 +5,7 @@ import com.raditha.hql.grammar.HQLLexer;
 import com.raditha.hql.grammar.HQLParser;
 import com.raditha.hql.grammar.HQLParser.*;
 import com.raditha.hql.model.MetaData;
+import com.raditha.hql.parser.ParameterAwareTokenStream;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.ParseTree;
 
@@ -70,7 +71,9 @@ public class HQLToPostgreSQLConverter {
     public String convert(String hqlQuery, MetaData analysis) throws ConversionException {
         CharStream input = CharStreams.fromString(hqlQuery);
         HQLLexer lexer = new HQLLexer(input);
-        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        // Use ParameterAwareTokenStream to allow keywords as parameter names (e.g., :from, :to)
+        ParameterAwareTokenStream tokens = new ParameterAwareTokenStream(lexer);
+        tokens.rewriteParameterNames();
         HQLParser parser = new HQLParser(tokens);
 
         parser.removeErrorListeners();
@@ -796,6 +799,25 @@ public class HQLToPostgreSQLConverter {
                 return "UPPER(" + visit(expressions.get(0)) + ")";
             } else if (ctx.LOWER() != null) {
                 return "LOWER(" + visit(expressions.get(0)) + ")";
+            } else if (ctx.TRIM() != null) {
+                // Handle TRIM function: TRIM((LEADING|TRAILING|BOTH)? (STRING FROM)? expression)
+                StringBuilder sb = new StringBuilder("TRIM(");
+                if (ctx.LEADING() != null) {
+                    sb.append("LEADING ");
+                } else if (ctx.TRAILING() != null) {
+                    sb.append("TRAILING ");
+                } else if (ctx.BOTH() != null) {
+                    sb.append("BOTH ");
+                }
+                if (ctx.STRING() != null) {
+                    sb.append(ctx.STRING().getText()).append(" ");
+                }
+                if (ctx.FROM() != null) {
+                    sb.append("FROM ");
+                }
+                sb.append(visit(expressions.get(0)));
+                sb.append(")");
+                return sb.toString();
             } else if (ctx.LENGTH() != null) {
                 return "LENGTH(" + visit(expressions.get(0)) + ")";
             } else if (ctx.ABS() != null) {
