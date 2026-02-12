@@ -143,6 +143,7 @@ functionCall
     | COALESCE LP expressionList RP
     | NULLIF LP expression COMMA expression RP
     | CAST LP expression AS identifier RP
+    | identifier LP expression FROM expression RP  // EXTRACT(field FROM expr) and similar
     | identifier LP expressionList? RP  // Custom functions
     ;
 

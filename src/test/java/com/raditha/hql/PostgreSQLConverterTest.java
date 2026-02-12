@@ -229,4 +229,19 @@ class PostgreSQLConverterTest {
         assertThat(sql).doesNotContain("o.is_deleted = true");
         assertThat(sql).doesNotContain("o.is_active = false");
     }
+
+    @Test
+    void testExtractFunction() throws ParseException, ConversionException {
+        converter.registerEntityMapping("MedicalLeave", "medical_leave");
+        converter.registerFieldMapping("MedicalLeave", "sendToApprovalDate", "send_to_approval_date");
+        converter.registerFieldMapping("MedicalLeave", "createdDate", "created_date");
+        converter.registerFieldMapping("MedicalLeave", "hospitalId", "hospital_id");
+
+        String hql = "SELECT AVG(EXTRACT(DAY FROM (m.sendToApprovalDate - m.createdDate))), m.hospitalId "
+                + "FROM MedicalLeave m GROUP BY m.hospitalId";
+        MetaData analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
+        assertThat(sql).contains("EXTRACT(DAY FROM");
+        assertThat(sql).contains("GROUP BY");
+    }
 }

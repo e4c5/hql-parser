@@ -837,6 +837,11 @@ public class HQLToPostgreSQLConverter {
             } else if (ctx.SIZE() != null) {
                 return "SIZE(" + visit(ctx.path()) + ")";
             }
+            // Handle identifier(expr FROM expr) pattern - EXTRACT and similar
+            if (ctx.identifier() != null && ctx.FROM() != null && expressions.size() == 2) {
+                String funcName = ctx.identifier().getText().toUpperCase();
+                return funcName + "(" + visit(expressions.get(0)) + " FROM " + visit(expressions.get(1)) + ")";
+            }
             // Default for custom functions
             if (ctx.identifier() != null) {
                 String args = ctx.expressionList() != null ? visit(ctx.expressionList()) : "";
