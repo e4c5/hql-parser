@@ -487,4 +487,59 @@ class AdvancedConverterTest {
         assertThat(sql).contains("last_name");
         assertThat(sql).contains("user_name");
     }
+
+    @Test
+    void testModFunction() throws ParseException, ConversionException {
+        String hql = "SELECT MOD(u.age, 10) FROM User u";
+        MetaData analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
+
+        assertThat(sql).contains("MOD(u.age, 10)");
+    }
+
+    @Test
+    void testSubstringFunction() throws ParseException, ConversionException {
+        String hql = "SELECT SUBSTRING(u.firstName, 1, 3) FROM User u";
+        MetaData analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
+
+        assertThat(sql).contains("SUBSTRING(u.first_name FROM 1 FOR 3)");
+    }
+
+    @Test
+    void testSubstringFunctionTwoArgs() throws ParseException, ConversionException {
+        String hql = "SELECT SUBSTRING(u.firstName, 2) FROM User u";
+        MetaData analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
+
+        assertThat(sql).contains("SUBSTRING(u.first_name FROM 2)");
+    }
+
+    @Test
+    void testNullifFunction() throws ParseException, ConversionException {
+        String hql = "SELECT NULLIF(u.age, 0) FROM User u";
+        MetaData analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
+
+        assertThat(sql).contains("NULLIF(u.age, 0)");
+    }
+
+    @Test
+    void testCastFunction() throws ParseException, ConversionException {
+        String hql = "SELECT CAST(u.age AS string) FROM User u";
+        MetaData analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
+
+        assertThat(sql).contains("CAST(u.age AS string)");
+    }
+
+    @Test
+    void testInsertStatementThrowsConversionException() {
+        String hql = "INSERT INTO User (name, email) SELECT o.name, o.email FROM OldUser o";
+        assertThatThrownBy(() -> {
+            MetaData analysis = parser.analyze(hql);
+            converter.convert(hql, analysis);
+        }).isInstanceOf(ConversionException.class)
+          .hasMessageContaining("INSERT");
+    }
 }

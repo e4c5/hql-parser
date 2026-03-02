@@ -135,10 +135,9 @@ If IntelliJ shows "Cannot find symbol: HQLLexer" errors:
 - Visit specific context methods (e.g., `visitSelectStatement()`)
 
 ### Parameter Handling
-- Named parameters: `:paramName` in HQL (avoid keywords like `:end`, use `:endDate` instead)
+- Named parameters: `:paramName` in HQL (SQL keywords such as `:from`, `:to`, `:in` are supported via `ParameterAwareTokenStream`)
 - Positional parameters: `?1`, `?2` in HQL
 - PostgreSQL conversion currently keeps original format (not converted to `$1`, `$2`)
-- Lexer tokenizes keywords with priority, so parameter names that match keywords won't parse correctly
 
 ## Project Dependencies
 
@@ -162,11 +161,9 @@ If IntelliJ shows "Cannot find symbol: HQLLexer" errors:
 - `TREAT()` operator for polymorphic queries
 - `INDEX()`, `KEY()`, `VALUE()` functions for collections
 - `TYPE()` operator for inheritance
-- Constructor expressions (`SELECT NEW dto.Class(...)`)
 - Bulk INSERT with VALUES clause
 
 ### Best Practices
-- Avoid using HQL keywords as parameter names
 - Use explicit ON clauses in joins for SQL conversion
 - Register all entity-to-table and field-to-column mappings before conversion
 - Test queries with both parser analysis and SQL conversion to catch issues early

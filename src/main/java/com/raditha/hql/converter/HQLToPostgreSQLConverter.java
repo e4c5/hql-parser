@@ -90,7 +90,11 @@ public class HQLToPostgreSQLConverter {
         PostgreSQLConversionVisitor visitor = new PostgreSQLConversionVisitor(
                 entityToTableMap, entityFieldToColumnMap, analysis, relationshipMetadata);
 
-        return visitor.visit(tree);
+        try {
+            return visitor.visit(tree);
+        } catch (UnsupportedOperationException e) {
+            throw new ConversionException(e.getMessage(), e);
+        }
     }
 
     /**
@@ -568,7 +572,7 @@ public class HQLToPostgreSQLConverter {
             } else if (ctx.deleteStatement() != null) {
                 return visit(ctx.deleteStatement());
             } else if (ctx.insertStatement() != null) {
-                return visit(ctx.insertStatement());
+                throw new UnsupportedOperationException("INSERT statement conversion to SQL is not yet supported");
             }
             return "";
         }
@@ -824,6 +828,19 @@ public class HQLToPostgreSQLConverter {
                 return "ABS(" + visit(expressions.get(0)) + ")";
             } else if (ctx.SQRT() != null) {
                 return "SQRT(" + visit(expressions.get(0)) + ")";
+            } else if (ctx.MOD() != null) {
+                return "MOD(" + visit(expressions.get(0)) + ", " + visit(expressions.get(1)) + ")";
+            } else if (ctx.SUBSTRING() != null) {
+                String result = "SUBSTRING(" + visit(expressions.get(0)) + " FROM " + visit(expressions.get(1));
+                if (expressions.size() > 2) {
+                    result += " FOR " + visit(expressions.get(2));
+                }
+                result += ")";
+                return result;
+            } else if (ctx.NULLIF() != null) {
+                return "NULLIF(" + visit(expressions.get(0)) + ", " + visit(expressions.get(1)) + ")";
+            } else if (ctx.CAST() != null) {
+                return "CAST(" + visit(expressions.get(0)) + " AS " + ctx.identifier().getText() + ")";
             } else if (ctx.CURRENT_DATE() != null) {
                 return "CURRENT_DATE";
             } else if (ctx.CURRENT_TIME() != null) {

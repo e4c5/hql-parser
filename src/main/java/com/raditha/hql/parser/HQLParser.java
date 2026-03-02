@@ -40,6 +40,8 @@ public class HQLParser {
             }
             
             return tree;
+        } catch (ParseException e) {
+            throw e;
         } catch (Exception e) {
             throw new ParseException("Failed to parse query: " + e.getMessage(), e);
         }

@@ -13,8 +13,8 @@ public class UsageExamples {
     
     public static void main(String[] args) throws ConversionException, ParseException {
         example1_BasicParsing();
-//        example2_QueryAnalysis();
-//        example3_PostgreSQLConversion();
+        example2_QueryAnalysis();
+        example3_PostgreSQLConversion();
         example4_ComplexQuery();
     }
     
