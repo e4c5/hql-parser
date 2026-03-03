@@ -137,7 +137,7 @@ public class MetaData {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("QueryAnalysis {\n");
+        sb.append("MetaData {\n");
         sb.append("  Query Type: ").append(queryType).append("\n");
         sb.append("  Entities: ").append(entityNames).append("\n");
         sb.append("  Alias to Entity: ").append(aliasToEntity).append("\n");

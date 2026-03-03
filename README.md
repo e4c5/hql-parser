@@ -16,7 +16,7 @@ A comprehensive Java parser for Hibernate Query Language (HQL) and Java Persiste
 
 ## Requirements
 
-- Java 11 or higher (project targets Java 11, developed with Java 21)
+- Java 21 or higher
 - Maven 3.6+
 
 ## IDE Setup
@@ -33,7 +33,7 @@ Add to your `pom.xml`:
 <dependency>
     <groupId>com.raditha</groupId>
     <artifactId>hql-parser</artifactId>
-    <version>0.0.2</version>
+    <version>0.0.16</version>
 </dependency>
 ```
 
@@ -199,7 +199,7 @@ System.out.println("Fields: " + analysis2.getEntityFields()); // {Purchase=[stat
 - Constructor expressions with `SELECT NEW ClassName(args...)`
 - UPDATE statements (with/without alias)
 - DELETE statements (with/without alias)
-- INSERT ... SELECT statements (grammar support only - parsing works but SQL conversion not yet implemented)
+- INSERT ... SELECT statements (full conversion support)
 
 ### Clauses
 - SELECT with DISTINCT
@@ -229,10 +229,10 @@ System.out.println("Fields: " + analysis2.getEntityFields()); // {Purchase=[stat
 - Math: ABS, SQRT, MOD
 - Other: COALESCE, NULLIF, CAST, SIZE
 
-**Note:** The parser supports all these functions in the grammar, but the PostgreSQL converter currently only implements conversion for: COUNT, SUM, AVG, MAX, MIN, UPPER, LOWER, LENGTH, CONCAT, COALESCE, SIZE, ABS, SQRT, CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP. Functions like TRIM, SUBSTRING, NULLIF, CAST, and MOD are parsed but not yet converted to SQL.
+**Note:** The parser supports all these functions in the grammar, and the PostgreSQL converter implements conversion for all listed functions. The `SIZE()` function and `MEMBER OF` operator produce HQL-specific SQL that may require application-level handling since they don't have direct PostgreSQL equivalents.
 
 ### Parameters
-- Named parameters: `:paramName` (avoid using HQL keywords like `:end`, `:and` as parameter names)
+- Named parameters: `:paramName` (SQL keywords such as `:from`, `:to`, `:in` are supported as parameter names)
 - Positional parameters: `?1`, `?2`, etc.
 
 ## API Documentation
@@ -348,9 +348,7 @@ mvn package
 
 6. **Collection Functions**: HQL-specific functions like `SIZE()`, `MEMBER OF` may not have direct PostgreSQL equivalents.
 
-7. **Incomplete Function Support**: While the parser grammar supports all HQL/JPQL functions, the converter currently only implements conversion for: COUNT, SUM, AVG, MAX, MIN, UPPER, LOWER, LENGTH, CONCAT, COALESCE, SIZE, ABS, SQRT, CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP. Functions like TRIM, SUBSTRING, NULLIF, CAST, and MOD are parsed but passed through as-is without proper conversion.
-
-8. **INSERT Statement Conversion**: While INSERT ... SELECT statements can be parsed, the converter does not yet implement SQL conversion for INSERT statements. Only SELECT, UPDATE, and DELETE statements are fully supported for conversion.
+7. **Function Support**: All grammar-defined HQL/JPQL functions are converted to their PostgreSQL equivalents, including aggregate functions (COUNT, SUM, AVG, MAX, MIN), string functions (UPPER, LOWER, TRIM, LENGTH, CONCAT, SUBSTRING), date/time functions (CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP), math functions (ABS, SQRT, MOD), and type functions (COALESCE, NULLIF, CAST). HQL-specific functions such as `SIZE()` and `MEMBER OF` are passed through as-is and may require application-level handling.
 
 ### Field Extraction Behavior
 

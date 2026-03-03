@@ -403,6 +403,26 @@ public class HQLToPostgreSQLConverter {
         }
 
         @Override
+        public String visitInsertStatement(InsertStatementContext ctx) {
+            String entityName = ctx.entityName().getText();
+            String tableName = entityToTableMap.getOrDefault(entityName, entityName.toLowerCase());
+
+            // Build column list from identifierList, mapping field names to column names
+            List<String> columns = new ArrayList<>();
+            for (IdentifierContext id : ctx.identifierList().identifier()) {
+                String fieldName = id.getText();
+                columns.add(resolveColumnForField(entityName, fieldName));
+            }
+
+            StringBuilder sql = new StringBuilder("INSERT INTO ");
+            sql.append(tableName);
+            sql.append(" (").append(String.join(", ", columns)).append(")");
+            sql.append(" ").append(visit(ctx.selectStatement()));
+
+            return sql.toString();
+        }
+
+        @Override
         public String visitSetClause(SetClauseContext ctx) {
             List<String> assignments = new ArrayList<>();
             for (AssignmentContext assignment : ctx.assignment()) {
@@ -824,6 +844,19 @@ public class HQLToPostgreSQLConverter {
                 return "ABS(" + visit(expressions.get(0)) + ")";
             } else if (ctx.SQRT() != null) {
                 return "SQRT(" + visit(expressions.get(0)) + ")";
+            } else if (ctx.MOD() != null) {
+                return "MOD(" + visit(expressions.get(0)) + ", " + visit(expressions.get(1)) + ")";
+            } else if (ctx.SUBSTRING() != null) {
+                String result = "SUBSTRING(" + visit(expressions.get(0)) + " FROM " + visit(expressions.get(1));
+                if (expressions.size() > 2) {
+                    result += " FOR " + visit(expressions.get(2));
+                }
+                result += ")";
+                return result;
+            } else if (ctx.NULLIF() != null) {
+                return "NULLIF(" + visit(expressions.get(0)) + ", " + visit(expressions.get(1)) + ")";
+            } else if (ctx.CAST() != null) {
+                return "CAST(" + visit(expressions.get(0)) + " AS " + ctx.identifier().getText() + ")";
             } else if (ctx.CURRENT_DATE() != null) {
                 return "CURRENT_DATE";
             } else if (ctx.CURRENT_TIME() != null) {

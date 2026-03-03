@@ -186,4 +186,20 @@ class HQLParserTest {
         assertThat(analysis.getEntityFields().get("User")).contains("name");
         assertThat(analysis.getParameters()).contains("pattern");
     }
+
+    @Test
+    void testParseExceptionNotDoubleWrapped() {
+        String query = "INVALID QUERY";
+        assertThatThrownBy(() -> parser.parse(query))
+            .isInstanceOf(ParseException.class)
+            .hasMessageStartingWith("Parse errors:")
+            .satisfies(e -> assertThat(e.getCause()).isNull());
+    }
+
+    @Test
+    void testMetaDataToStringLabel() throws ParseException {
+        String query = "SELECT u FROM User u";
+        MetaData analysis = parser.analyze(query);
+        assertThat(analysis.toString()).startsWith("MetaData {");
+    }
 }
