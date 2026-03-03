@@ -534,12 +534,15 @@ class AdvancedConverterTest {
     }
 
     @Test
-    void testInsertStatementThrowsConversionException() {
-        String hql = "INSERT INTO User (name, email) SELECT o.name, o.email FROM OldUser o";
-        assertThatThrownBy(() -> {
-            MetaData analysis = parser.analyze(hql);
-            converter.convert(hql, analysis);
-        }).isInstanceOf(ConversionException.class)
-          .hasMessageContaining("INSERT");
+    void testInsertStatement() throws ParseException, ConversionException {
+        converter.registerEntityMapping("OldUser", "old_users");
+        converter.registerFieldMapping("OldUser", "name", "full_name");
+        String hql = "INSERT INTO User (userName, email) SELECT o.name, o.email FROM OldUser o";
+        MetaData analysis = parser.analyze(hql);
+        String sql = converter.convert(hql, analysis);
+
+        assertThat(sql).startsWith("INSERT INTO users (user_name, email)");
+        assertThat(sql).contains("SELECT o.full_name, o.email");
+        assertThat(sql).contains("FROM old_users o");
     }
 }

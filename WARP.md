@@ -4,7 +4,7 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 
 ## Project Overview
 
-This is a Java-based HQL/JPQL parser built with ANTLR4 that parses Hibernate Query Language and Java Persistence Query Language, analyzes queries, and converts them to PostgreSQL SQL. The project uses Maven for build management and targets Java 11 (developed with Java 21).
+This is a Java-based HQL/JPQL parser built with ANTLR4 that parses Hibernate Query Language and Java Persistence Query Language, analyzes queries, and converts them to PostgreSQL SQL. The project uses Maven for build management and targets Java 21.
 
 ## Essential Commands
 
@@ -144,7 +144,7 @@ If IntelliJ shows "Cannot find symbol: HQLLexer" errors:
 - **ANTLR 4.13.1**: Parser generation runtime
 - **JUnit 5.10.1**: Testing framework
 - **AssertJ 3.24.2**: Fluent assertions for tests
-- **Java 11+**: Minimum required version
+- **Java 21+**: Minimum required version
 
 ## Known Limitations
 

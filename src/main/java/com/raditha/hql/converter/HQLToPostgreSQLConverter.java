@@ -90,11 +90,7 @@ public class HQLToPostgreSQLConverter {
         PostgreSQLConversionVisitor visitor = new PostgreSQLConversionVisitor(
                 entityToTableMap, entityFieldToColumnMap, analysis, relationshipMetadata);
 
-        try {
-            return visitor.visit(tree);
-        } catch (UnsupportedOperationException e) {
-            throw new ConversionException(e.getMessage(), e);
-        }
+        return visitor.visit(tree);
     }
 
     /**
@@ -407,6 +403,26 @@ public class HQLToPostgreSQLConverter {
         }
 
         @Override
+        public String visitInsertStatement(InsertStatementContext ctx) {
+            String entityName = ctx.entityName().getText();
+            String tableName = entityToTableMap.getOrDefault(entityName, entityName.toLowerCase());
+
+            // Build column list from identifierList, mapping field names to column names
+            List<String> columns = new ArrayList<>();
+            for (IdentifierContext id : ctx.identifierList().identifier()) {
+                String fieldName = id.getText();
+                columns.add(resolveColumnForField(entityName, fieldName));
+            }
+
+            StringBuilder sql = new StringBuilder("INSERT INTO ");
+            sql.append(tableName);
+            sql.append(" (").append(String.join(", ", columns)).append(")");
+            sql.append(" ").append(visit(ctx.selectStatement()));
+
+            return sql.toString();
+        }
+
+        @Override
         public String visitSetClause(SetClauseContext ctx) {
             List<String> assignments = new ArrayList<>();
             for (AssignmentContext assignment : ctx.assignment()) {
@@ -572,7 +588,7 @@ public class HQLToPostgreSQLConverter {
             } else if (ctx.deleteStatement() != null) {
                 return visit(ctx.deleteStatement());
             } else if (ctx.insertStatement() != null) {
-                throw new UnsupportedOperationException("INSERT statement conversion to SQL is not yet supported");
+                return visit(ctx.insertStatement());
             }
             return "";
         }
