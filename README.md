@@ -320,8 +320,9 @@ This repository is configured to publish signed release artifacts to Maven Centr
 - Publishing guide: [MAVEN_CENTRAL_PUBLISHING.md](MAVEN_CENTRAL_PUBLISHING.md)
 
 Release behavior:
-- pushing a `v*` tag publishes to Maven Central
-- manually running the workflow only validates the build and release profile
+- pushing a `v*` tag publishes to Maven Central only when the tag version exactly matches the `<version>` in `pom.xml`
+- if the `v*` tag version does not match `pom.xml`, the workflow fails the version check and does not publish
+- manually running the workflow only validates the build and release profile, and does not bypass the tag-to-`pom.xml` version guard
 
 Before the first release, make sure the `com.raditha` namespace has been claimed in the Central Portal. If that namespace cannot be verified, the project coordinates must be moved to a namespace you control before publishing.
 

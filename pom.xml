@@ -51,7 +51,7 @@
         <maven.javadoc.plugin.version>3.11.2</maven.javadoc.plugin.version>
         <maven.source.plugin.version>3.3.1</maven.source.plugin.version>
         <maven.surefire.plugin.version>3.5.5</maven.surefire.plugin.version>
-        <sonatype.central.plugin.version>0.7.0</sonatype.central.plugin.version>
+        <sonatype.central.plugin.version>0.10.0</sonatype.central.plugin.version>
     </properties>
 
     <dependencies>
