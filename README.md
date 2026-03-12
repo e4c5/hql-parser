@@ -4,7 +4,7 @@ A comprehensive Java parser for Hibernate Query Language (HQL) and Java Persiste
 
 The project is configured for Maven Central publishing through the Sonatype Central Portal rather than JitPack.
 
-> **Note:** Spring Boot and Hibernate can generate SQL from JPQL/HQL during normal application runtime, but they do not provide a lightweight standalone API for offline query parsing, metadata extraction, and SQL conversion without starting the application stack. This library is intended for that standalone use case.
+> **Built for standalone use:** This library brings JPQL/HQL parsing, query analysis, metadata extraction, and PostgreSQL SQL conversion into a plain Java dependency that can be used in tools, CLIs, CI pipelines, migration utilities, and backend services without needing to boot a full application.
 
 ## Features
 
