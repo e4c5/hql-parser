@@ -1,10 +1,18 @@
 # HQL/JPQL Parser
 
-A comprehensive Java parser for Hibernate Query Language (HQL) and Java Persistence Query Language (JPQL) with PostgreSQL conversion support.
+A standalone Java library for parsing HQL/JPQL, extracting query metadata, and converting queries to PostgreSQL SQL.
 
 The project is configured for Maven Central publishing through the Sonatype Central Portal rather than JitPack.
 
 > **Built for standalone use:** This library brings JPQL/HQL parsing, query analysis, metadata extraction, and PostgreSQL SQL conversion into a plain Java dependency that can be used in tools, CLIs, CI pipelines, migration utilities, and backend services without needing to boot a full application.
+
+## Why teams use this library
+
+- **Build query-aware tooling**: power CLIs, linters, analyzers, and migration helpers with HQL/JPQL parsing
+- **Understand queries programmatically**: extract entities, fields, aliases, and parameters for validation or automation
+- **Translate ORM queries for downstream systems**: convert HQL/JPQL into PostgreSQL SQL using explicit mappings
+- **Run outside application runtime**: use it in batch jobs, CI, developer tooling, and backend utilities as a plain Java dependency
+- **Adopt incrementally**: start with syntax validation or metadata extraction, then add conversion where needed
 
 ## Features
 
