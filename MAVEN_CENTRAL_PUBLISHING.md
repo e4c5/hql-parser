@@ -42,12 +42,17 @@ Add these repository secrets before using the release workflow:
 
 ## Release Workflow
 
-The GitHub Actions workflow publishes when a version tag is pushed:
+The GitHub Actions workflow supports two modes:
+
+- **Automatic publishing on version tags**: pushing a tag like `v0.0.16` performs a real Maven Central release
+- **Manual validation on demand**: running the workflow from the GitHub Actions UI only verifies the build and release profile; it does not publish anything
+
+For publishing, the workflow runs when a version tag is pushed:
 
 - Tag format: `v<project-version>`
 - Example: `v0.0.16`
 
-The workflow checks that the tag version matches `project.version` in `pom.xml` before deploying.
+For tag-based releases, the workflow checks that the tag version matches `project.version` in `pom.xml` before deploying.
 
 ## Typical Release Steps
 
@@ -61,6 +66,17 @@ git push origin v0.0.16
 ```
 
 4. GitHub Actions builds, signs, and publishes the release to Maven Central.
+
+## Manual Validation Run
+
+If you trigger the workflow manually from GitHub Actions, it will run:
+
+```bash
+mvn --batch-mode clean verify
+mvn --batch-mode -P release -Dgpg.skip=true verify
+```
+
+This path is intended for validating release readiness without uploading artifacts to Sonatype Central.
 
 ## Local Release Command
 

@@ -309,6 +309,10 @@ This repository is configured to publish signed release artifacts to Maven Centr
 - Release workflow: `.github/workflows/publish-maven-central.yml`
 - Publishing guide: [MAVEN_CENTRAL_PUBLISHING.md](MAVEN_CENTRAL_PUBLISHING.md)
 
+Release behavior:
+- pushing a `v*` tag publishes to Maven Central
+- manually running the workflow only validates the build and release profile
+
 Before the first release, make sure the `com.raditha` namespace has been claimed in the Central Portal. If that namespace cannot be verified, the project coordinates must be moved to a namespace you control before publishing.
 
 ## Running Examples
