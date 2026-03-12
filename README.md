@@ -1,6 +1,18 @@
 # HQL/JPQL Parser
 
-A comprehensive Java parser for Hibernate Query Language (HQL) and Java Persistence Query Language (JPQL) with PostgreSQL conversion support.
+A standalone Java library for parsing HQL/JPQL, extracting query metadata, and converting queries to PostgreSQL SQL.
+
+The project is configured for Maven Central publishing through the Sonatype Central Portal rather than JitPack.
+
+> **Built for standalone use:** This library brings JPQL/HQL parsing, query analysis, metadata extraction, and PostgreSQL SQL conversion into a plain Java dependency that can be used in tools, CLIs, CI pipelines, migration utilities, and backend services without needing to boot a full application.
+
+## Why teams use this library
+
+- **Build query-aware tooling**: power CLIs, linters, analyzers, and migration helpers with HQL/JPQL parsing
+- **Understand queries programmatically**: extract entities, fields, aliases, and parameters for validation or automation
+- **Translate ORM queries for downstream systems**: convert HQL/JPQL into PostgreSQL SQL using explicit mappings
+- **Run outside application runtime**: use it in batch jobs, CI, developer tooling, and backend utilities as a plain Java dependency
+- **Adopt incrementally**: start with syntax validation or metadata extraction, then add conversion where needed
 
 ## Features
 
@@ -25,9 +37,9 @@ A comprehensive Java parser for Hibernate Query Language (HQL) and Java Persiste
 
 ## Installation
 
-### Maven
+### Maven Central
 
-Add to your `pom.xml`:
+Once a release has been published, add the dependency to your `pom.xml`:
 
 ```xml
 <dependency>
@@ -36,6 +48,8 @@ Add to your `pom.xml`:
     <version>0.0.16</version>
 </dependency>
 ```
+
+No additional repository configuration is required when consuming the library from Maven Central.
 
 ### Build from Source
 
@@ -298,6 +312,20 @@ hql-parser/
 mvn test
 ```
 
+## Publishing Releases
+
+This repository is configured to publish signed release artifacts to Maven Central by using the Sonatype Central Portal and a GitHub Actions workflow.
+
+- Release workflow: `.github/workflows/publish-maven-central.yml`
+- Publishing guide: [MAVEN_CENTRAL_PUBLISHING.md](MAVEN_CENTRAL_PUBLISHING.md)
+
+Release behavior:
+- pushing a `v*` tag publishes to Maven Central only when the tag version exactly matches the `<version>` in `pom.xml`
+- if the `v*` tag version does not match `pom.xml`, the workflow fails the version check and does not publish
+- manually running the workflow only validates the build and release profile, and does not bypass the tag-to-`pom.xml` version guard
+
+Before the first release, make sure the `com.raditha` namespace has been claimed in the Central Portal. If that namespace cannot be verified, the project coordinates must be moved to a namespace you control before publishing.
+
 ## Running Examples
 
 ```bash
@@ -384,7 +412,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the [Apache License 2.0](LICENSE).
 
 ## Author
 
