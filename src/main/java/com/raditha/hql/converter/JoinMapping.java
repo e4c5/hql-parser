@@ -13,9 +13,15 @@ public class JoinMapping {
     private final JoinType joinType;
     private final String sourceTable;
     private final String targetTable;
+    private final String constraintName;
 
     public JoinMapping(String propertyName, String targetEntity, String joinColumn, String referencedColumn,
                        JoinType joinType, String sourceTable, String targetTable) {
+        this(propertyName, targetEntity, joinColumn, referencedColumn, joinType, sourceTable, targetTable, null);
+    }
+
+    public JoinMapping(String propertyName, String targetEntity, String joinColumn, String referencedColumn,
+                       JoinType joinType, String sourceTable, String targetTable, String constraintName) {
         this.propertyName = propertyName;
         this.targetEntity = targetEntity;
         this.joinColumn = joinColumn;
@@ -23,6 +29,7 @@ public class JoinMapping {
         this.joinType = joinType;
         this.sourceTable = sourceTable;
         this.targetTable = targetTable;
+        this.constraintName = constraintName;
     }
 
     public String propertyName() {
@@ -51,6 +58,10 @@ public class JoinMapping {
 
     public String targetTable() {
         return targetTable;
+    }
+
+    public String constraintName() {
+        return constraintName;
     }
 }
 
