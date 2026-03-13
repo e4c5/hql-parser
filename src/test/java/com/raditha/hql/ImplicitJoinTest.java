@@ -36,9 +36,9 @@ class ImplicitJoinTest {
         
         // Create relationship metadata: User.orders -> Order
         Map<String, JoinMapping> userRelationships = new HashMap<>();
-        userRelationships.put("orders", new JoinMapping(
-            "orders", "Order", "user_id", "id", JoinType.LEFT, "users", "orders"
-        ));
+        JoinMapping ordersMapping = new JoinMapping("orders", "user_id", "users", "orders");
+        ordersMapping.setTargetEntity("Order");
+        userRelationships.put("orders", ordersMapping);
         
         Map<String, Map<String, JoinMapping>> relationshipMetadata = new HashMap<>();
         relationshipMetadata.put("User", userRelationships);
@@ -61,10 +61,10 @@ class ImplicitJoinTest {
         converter.registerEntityMapping("Order", "orders");
         
         Map<String, JoinMapping> userRelationships = new HashMap<>();
-        userRelationships.put("orders", new JoinMapping(
-            "orders", "Order", "user_id", "id", JoinType.LEFT, "users", "orders"
-        ));
-        
+        JoinMapping ordersMapping = new JoinMapping("orders", "user_id", "users", "orders");
+        ordersMapping.setTargetEntity("Order");
+        userRelationships.put("orders", ordersMapping);
+
         Map<String, Map<String, JoinMapping>> relationshipMetadata = new HashMap<>();
         relationshipMetadata.put("User", userRelationships);
         converter.setRelationshipMetadata(relationshipMetadata);
@@ -106,9 +106,10 @@ class ImplicitJoinTest {
         converter.registerEntityMapping("OrderEntity", "orders");
         
         Map<String, JoinMapping> orderRelationships = new HashMap<>();
-        orderRelationships.put("user", new JoinMapping(
-            "user", "User", "user_id", "id", JoinType.INNER, "orders", "users"
-        ));
+        JoinMapping userMapping = new JoinMapping("user", "user_id", "orders", "users");
+        userMapping.setTargetEntity("User");
+        userMapping.setJoinType(JoinType.INNER);
+        orderRelationships.put("user", userMapping);
         
         Map<String, Map<String, JoinMapping>> relationshipMetadata = new HashMap<>();
         relationshipMetadata.put("OrderEntity", orderRelationships);
@@ -131,9 +132,10 @@ class ImplicitJoinTest {
         converter.registerEntityMapping("Order", "orders");
         
         Map<String, JoinMapping> userRelationships = new HashMap<>();
-        userRelationships.put("orders", new JoinMapping(
-            "orders", "Order", "user_id", "id", JoinType.RIGHT, "users", "orders"
-        ));
+        JoinMapping ordersMapping = new JoinMapping("orders", "user_id", "users", "orders");
+        ordersMapping.setTargetEntity("Order");
+        ordersMapping.setJoinType(JoinType.RIGHT);
+        userRelationships.put("orders", ordersMapping);
         
         Map<String, Map<String, JoinMapping>> relationshipMetadata = new HashMap<>();
         relationshipMetadata.put("User", userRelationships);
@@ -159,9 +161,10 @@ class ImplicitJoinTest {
         
         // "status" ends with 's' but is ManyToOne, so FK is on orders table
         Map<String, JoinMapping> orderRelationships = new HashMap<>();
-        orderRelationships.put("status", new JoinMapping(
-            "status", "Status", "status_id", "id", JoinType.INNER, "orders", "statuses"
-        ));
+        JoinMapping statusMapping = new JoinMapping("status", "status_id", "orders", "statuses");
+        statusMapping.setTargetEntity("Status");
+        statusMapping.setJoinType(JoinType.INNER);
+        orderRelationships.put("status", statusMapping);
         
         Map<String, Map<String, JoinMapping>> relationshipMetadata = new HashMap<>();
         relationshipMetadata.put("OrderEntity", orderRelationships);
@@ -186,9 +189,9 @@ class ImplicitJoinTest {
         converter.registerEntityMapping("Address", "addresses");
         
         Map<String, JoinMapping> userRelationships = new HashMap<>();
-        userRelationships.put("address", new JoinMapping(
-            "address", "Address", "address_id", "id", JoinType.LEFT, "users", "addresses"
-        ));
+        JoinMapping addressMapping = new JoinMapping("address", "address_id", "users", "addresses");
+        addressMapping.setTargetEntity("Address");
+        userRelationships.put("address", addressMapping);
         
         Map<String, Map<String, JoinMapping>> relationshipMetadata = new HashMap<>();
         relationshipMetadata.put("User", userRelationships);

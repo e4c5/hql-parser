@@ -6,62 +6,78 @@ package com.raditha.hql.converter;
  * converted to SQL joins, including join columns and join types.
  */
 public class JoinMapping {
-    private final String propertyName;
-    private final String targetEntity;
-    private final String joinColumn;
-    private final String referencedColumn;
-    private final JoinType joinType;
-    private final String sourceTable;
-    private final String targetTable;
-    private final String constraintName;
+    private String propertyName;
+    private String targetEntity;
+    private String joinColumn;
+    private String referencedColumn = "id";
+    private String sourceTable;
+    private String targetTable;
+    private JoinType joinType = JoinType.LEFT;
 
-    public JoinMapping(String propertyName, String targetEntity, String joinColumn, String referencedColumn,
-                       JoinType joinType, String sourceTable, String targetTable) {
-        this(propertyName, targetEntity, joinColumn, referencedColumn, joinType, sourceTable, targetTable, null);
+    public JoinMapping() {
     }
 
-    public JoinMapping(String propertyName, String targetEntity, String joinColumn, String referencedColumn,
-                       JoinType joinType, String sourceTable, String targetTable, String constraintName) {
+    public JoinMapping(String propertyName, String joinColumn, String sourceTable, String targetTable) {
         this.propertyName = propertyName;
-        this.targetEntity = targetEntity;
         this.joinColumn = joinColumn;
-        this.referencedColumn = referencedColumn;
-        this.joinType = joinType;
         this.sourceTable = sourceTable;
         this.targetTable = targetTable;
-        this.constraintName = constraintName;
     }
 
     public String propertyName() {
         return propertyName;
     }
 
+    public void setPropertyName(String propertyName) {
+        this.propertyName = propertyName;
+    }
+
     public String targetEntity() {
         return targetEntity;
+    }
+
+    public void setTargetEntity(String targetEntity) {
+        this.targetEntity = targetEntity;
     }
 
     public String joinColumn() {
         return joinColumn;
     }
 
+    public void setJoinColumn(String joinColumn) {
+        this.joinColumn = joinColumn;
+    }
+
     public String referencedColumn() {
         return referencedColumn;
+    }
+
+    public void setReferencedColumn(String referencedColumn) {
+        this.referencedColumn = referencedColumn;
     }
 
     public JoinType joinType() {
         return joinType;
     }
 
+    public void setJoinType(JoinType joinType) {
+        this.joinType = joinType;
+    }
+
     public String sourceTable() {
         return sourceTable;
+    }
+
+    public void setSourceTable(String sourceTable) {
+        this.sourceTable = sourceTable;
     }
 
     public String targetTable() {
         return targetTable;
     }
 
-    public String constraintName() {
-        return constraintName;
+    public void setTargetTable(String targetTable) {
+        this.targetTable = targetTable;
     }
 }
 
