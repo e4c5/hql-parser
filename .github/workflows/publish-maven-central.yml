@@ -40,6 +40,23 @@ jobs:
       - name: Check out sources
         uses: actions/checkout@v4
 
+      - name: Validate Maven Central credentials
+        env:
+          MAVEN_USERNAME: ${{ secrets.CENTRAL_TOKEN_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.CENTRAL_TOKEN_PASSWORD }}
+        run: |
+          if [ -z "$MAVEN_USERNAME" ]; then
+            echo "::error::CENTRAL_TOKEN_USERNAME secret is not configured."
+            echo "Generate a User Token at https://central.sonatype.com/account and add it as a CENTRAL_TOKEN_USERNAME repository secret."
+            exit 1
+          fi
+          if [ -z "$MAVEN_PASSWORD" ]; then
+            echo "::error::CENTRAL_TOKEN_PASSWORD secret is not configured."
+            echo "Generate a User Token at https://central.sonatype.com/account and add it as a CENTRAL_TOKEN_PASSWORD repository secret."
+            exit 1
+          fi
+          echo "Maven Central credentials are configured."
+
       - name: Set up Java and Maven Central credentials
         uses: actions/setup-java@v4
         with:
