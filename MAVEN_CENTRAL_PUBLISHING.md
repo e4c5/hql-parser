@@ -35,8 +35,8 @@ The repository now includes:
 
 Add these repository secrets before using the release workflow:
 
-- `CENTRAL_TOKEN_USERNAME`
-- `CENTRAL_TOKEN_PASSWORD`
+- `CENTRAL_USERNAME`
+- `CENTRAL_PASSWORD`
 - `GPG_PRIVATE_KEY`
 - `GPG_PASSPHRASE`
 
@@ -97,8 +97,8 @@ Your Maven `settings.xml` should contain credentials similar to:
   <servers>
     <server>
       <id>central</id>
-      <username>YOUR_CENTRAL_TOKEN_USERNAME</username>
-      <password>YOUR_CENTRAL_TOKEN_PASSWORD</password>
+      <username>YOUR_CENTRAL_USERNAME</username>
+      <password>YOUR_CENTRAL_PASSWORD</password>
     </server>
   </servers>
 </settings>
@@ -118,15 +118,15 @@ java.lang.RuntimeException: Invalid request. Status: 401 Response body:
 
 The blank `namecode:` value means Maven is sending empty credentials to the Sonatype Central Portal.
 
-**Root cause**: The `CENTRAL_TOKEN_USERNAME` or `CENTRAL_TOKEN_PASSWORD` repository secrets are missing or empty.
+**Root cause**: The `CENTRAL_USERNAME` or `CENTRAL_PASSWORD` repository secrets are missing or empty.
 
 **Fix**:
 1. Sign in to <https://central.sonatype.com/>.
 2. Go to **Account** → **Generate User Token**.
 3. Copy the generated token username and token password.
 4. In the GitHub repository, go to **Settings** → **Secrets and variables** → **Actions**.
-5. Create (or update) the `CENTRAL_TOKEN_USERNAME` secret with the token username.
-6. Create (or update) the `CENTRAL_TOKEN_PASSWORD` secret with the token password.
+5. Create (or update) the `CENTRAL_USERNAME` secret with the token username.
+6. Create (or update) the `CENTRAL_PASSWORD` secret with the token password.
 
 Note: These are *token* credentials generated in the Central Portal, not your Sonatype account login credentials.
 
