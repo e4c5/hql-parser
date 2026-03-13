@@ -14,9 +14,6 @@ public class JoinMapping {
     private String targetTable;
     private JoinType joinType = JoinType.LEFT;
 
-    public JoinMapping() {
-    }
-
     public JoinMapping(String propertyName, String joinColumn, String sourceTable, String targetTable) {
         this.propertyName = propertyName;
         this.joinColumn = joinColumn;
