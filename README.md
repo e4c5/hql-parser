@@ -2,7 +2,7 @@
 
 A standalone Java library for parsing HQL/JPQL, extracting query metadata, and converting queries to PostgreSQL SQL.
 
-The project is configured for Maven Central publishing through the Sonatype Central Portal rather than JitPack.
+Published to Maven Central as `com.raditha:hql-parser`.
 
 > **Built for standalone use:** This library brings JPQL/HQL parsing, query analysis, metadata extraction, and PostgreSQL SQL conversion into a plain Java dependency that can be used in tools, CLIs, CI pipelines, migration utilities, and backend services without needing to boot a full application.
 
@@ -39,13 +39,13 @@ The project is configured for Maven Central publishing through the Sonatype Cent
 
 ### Maven Central
 
-Once a release has been published, add the dependency to your `pom.xml`:
+Add the dependency to your `pom.xml`:
 
 ```xml
 <dependency>
     <groupId>com.raditha</groupId>
     <artifactId>hql-parser</artifactId>
-    <version>0.0.16</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
@@ -312,19 +312,13 @@ hql-parser/
 mvn test
 ```
 
-## Publishing Releases
+## Availability
 
-This repository is configured to publish signed release artifacts to Maven Central by using the Sonatype Central Portal and a GitHub Actions workflow.
+`hql-parser` is available on Maven Central under:
 
-- Release workflow: `.github/workflows/publish-maven-central.yml`
-- Publishing guide: [MAVEN_CENTRAL_PUBLISHING.md](MAVEN_CENTRAL_PUBLISHING.md)
-
-Release behavior:
-- pushing a `v*` tag publishes to Maven Central only when the tag version exactly matches the `<version>` in `pom.xml`
-- if the `v*` tag version does not match `pom.xml`, the workflow fails the version check and does not publish
-- manually running the workflow only validates the build and release profile, and does not bypass the tag-to-`pom.xml` version guard
-
-Before the first release, make sure the `com.raditha` namespace has been claimed in the Central Portal. If that namespace cannot be verified, the project coordinates must be moved to a namespace you control before publishing.
+- Group ID: `com.raditha`
+- Artifact ID: `hql-parser`
+- Current version: `1.0.0`
 
 ## Running Examples
 
