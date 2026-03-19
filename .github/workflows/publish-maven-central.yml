@@ -1,0 +1,92 @@
+name: Publish to Maven Central
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  validate-release-config:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Verify standard build
+        run: mvn --batch-mode clean verify
+
+      - name: Verify release profile without publishing
+        run: mvn --batch-mode -P release -Dgpg.skip=true verify
+
+  publish:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@v4
+
+      - name: Validate Maven Central credentials
+        env:
+          MAVEN_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+        run: |
+          if [ -z "$MAVEN_USERNAME" ]; then
+            echo "::error::CENTRAL_USERNAME secret is not configured."
+            echo "Generate a User Token at https://central.sonatype.com/account and add it as a CENTRAL_USERNAME repository secret."
+            exit 1
+          fi
+          if [ -z "$MAVEN_PASSWORD" ]; then
+            echo "::error::CENTRAL_PASSWORD secret is not configured."
+            echo "Generate a User Token at https://central.sonatype.com/account and add it as a CENTRAL_PASSWORD repository secret."
+            exit 1
+          fi
+          echo "Maven Central credentials are configured."
+
+      - name: Set up Java and Maven Central credentials
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          server-id: central
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_PASSWORD
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+        env:
+          MAVEN_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Validate tag matches project version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          PROJECT_VERSION="$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+
+          if [ "$PROJECT_VERSION" != "$TAG_VERSION" ]; then
+            echo "Tag version ($TAG_VERSION) does not match pom.xml version ($PROJECT_VERSION)."
+            exit 1
+          fi
+
+      - name: Publish signed artifacts
+        run: mvn --batch-mode -P release deploy -Dgpg.passphrase="${MAVEN_GPG_PASSPHRASE}"
+        env:
+          MAVEN_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}

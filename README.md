@@ -1,6 +1,18 @@
 # HQL/JPQL Parser
 
-A comprehensive Java parser for Hibernate Query Language (HQL) and Java Persistence Query Language (JPQL) with PostgreSQL conversion support.
+A standalone Java library for parsing HQL/JPQL, extracting query metadata, and converting queries to PostgreSQL SQL.
+
+Published to Maven Central as `com.raditha:hql-parser`.
+
+> **Built for standalone use:** This library brings JPQL/HQL parsing, query analysis, metadata extraction, and PostgreSQL SQL conversion into a plain Java dependency that can be used in tools, CLIs, CI pipelines, migration utilities, and backend services without needing to boot a full application.
+
+## Why teams use this library
+
+- **Build query-aware tooling**: power CLIs, linters, analyzers, and migration helpers with HQL/JPQL parsing
+- **Understand queries programmatically**: extract entities, fields, aliases, and parameters for validation or automation
+- **Translate ORM queries for downstream systems**: convert HQL/JPQL into PostgreSQL SQL using explicit mappings
+- **Run outside application runtime**: use it in batch jobs, CI, developer tooling, and backend utilities as a plain Java dependency
+- **Adopt incrementally**: start with syntax validation or metadata extraction, then add conversion where needed
 
 ## Features
 
@@ -16,7 +28,7 @@ A comprehensive Java parser for Hibernate Query Language (HQL) and Java Persiste
 
 ## Requirements
 
-- Java 11 or higher (project targets Java 11, developed with Java 21)
+- Java 21 or higher
 - Maven 3.6+
 
 ## IDE Setup
@@ -25,17 +37,19 @@ A comprehensive Java parser for Hibernate Query Language (HQL) and Java Persiste
 
 ## Installation
 
-### Maven
+### Maven Central
 
-Add to your `pom.xml`:
+Add the dependency to your `pom.xml`:
 
 ```xml
 <dependency>
     <groupId>com.raditha</groupId>
     <artifactId>hql-parser</artifactId>
-    <version>0.0.2</version>
+    <version>1.0.0</version>
 </dependency>
 ```
+
+No additional repository configuration is required when consuming the library from Maven Central.
 
 ### Build from Source
 
@@ -199,7 +213,7 @@ System.out.println("Fields: " + analysis2.getEntityFields()); // {Purchase=[stat
 - Constructor expressions with `SELECT NEW ClassName(args...)`
 - UPDATE statements (with/without alias)
 - DELETE statements (with/without alias)
-- INSERT ... SELECT statements (grammar support only - parsing works but SQL conversion not yet implemented)
+- INSERT ... SELECT statements (full conversion support)
 
 ### Clauses
 - SELECT with DISTINCT
@@ -229,10 +243,10 @@ System.out.println("Fields: " + analysis2.getEntityFields()); // {Purchase=[stat
 - Math: ABS, SQRT, MOD
 - Other: COALESCE, NULLIF, CAST, SIZE
 
-**Note:** The parser supports all these functions in the grammar, but the PostgreSQL converter currently only implements conversion for: COUNT, SUM, AVG, MAX, MIN, UPPER, LOWER, LENGTH, CONCAT, COALESCE, SIZE, ABS, SQRT, CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP. Functions like TRIM, SUBSTRING, NULLIF, CAST, and MOD are parsed but not yet converted to SQL.
+**Note:** The parser supports all these functions in the grammar, and the PostgreSQL converter implements conversion for all listed functions. The `SIZE()` function and `MEMBER OF` operator produce HQL-specific SQL that may require application-level handling since they don't have direct PostgreSQL equivalents.
 
 ### Parameters
-- Named parameters: `:paramName` (avoid using HQL keywords like `:end`, `:and` as parameter names)
+- Named parameters: `:paramName` (SQL keywords such as `:from`, `:to`, `:in` are supported as parameter names)
 - Positional parameters: `?1`, `?2`, etc.
 
 ## API Documentation
@@ -298,6 +312,14 @@ hql-parser/
 mvn test
 ```
 
+## Availability
+
+`hql-parser` is available on Maven Central under:
+
+- Group ID: `com.raditha`
+- Artifact ID: `hql-parser`
+- Current version: `1.0.0`
+
 ## Running Examples
 
 ```bash
@@ -348,9 +370,7 @@ mvn package
 
 6. **Collection Functions**: HQL-specific functions like `SIZE()`, `MEMBER OF` may not have direct PostgreSQL equivalents.
 
-7. **Incomplete Function Support**: While the parser grammar supports all HQL/JPQL functions, the converter currently only implements conversion for: COUNT, SUM, AVG, MAX, MIN, UPPER, LOWER, LENGTH, CONCAT, COALESCE, SIZE, ABS, SQRT, CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP. Functions like TRIM, SUBSTRING, NULLIF, CAST, and MOD are parsed but passed through as-is without proper conversion.
-
-8. **INSERT Statement Conversion**: While INSERT ... SELECT statements can be parsed, the converter does not yet implement SQL conversion for INSERT statements. Only SELECT, UPDATE, and DELETE statements are fully supported for conversion.
+7. **Function Support**: All grammar-defined HQL/JPQL functions are converted to their PostgreSQL equivalents, including aggregate functions (COUNT, SUM, AVG, MAX, MIN), string functions (UPPER, LOWER, TRIM, LENGTH, CONCAT, SUBSTRING), date/time functions (CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP), math functions (ABS, SQRT, MOD), and type functions (COALESCE, NULLIF, CAST). HQL-specific functions such as `SIZE()` and `MEMBER OF` are passed through as-is and may require application-level handling.
 
 ### Field Extraction Behavior
 
@@ -386,7 +406,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the [Apache License 2.0](LICENSE).
 
 ## Author
 
