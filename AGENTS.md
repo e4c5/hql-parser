@@ -42,15 +42,17 @@ mvn -P release -Dgpg.skip=true verify
 
 ## Release Behavior
 
-The GitHub Actions workflow has two distinct modes:
+The GitHub Actions workflow has three modes:
 
 1. **Tag push publishes to Maven Central**
-   - Pushing a tag matching `v*` triggers a real release
-   - The tag version must match `project.version` in `pom.xml`
+   - Pushing a tag matching `v*` (e.g. `v1.0.2`) or a bare version tag (e.g. `1.0.2`) triggers a real release
+   - The tag version must match `project.version` in `pom.xml` (the leading `v` is stripped before comparing)
 
-2. **Manual workflow run validates only**
-   - `workflow_dispatch` does not publish
-   - It only runs build and release-profile verification
+2. **Manual workflow run validates only (default)**
+   - Triggering `workflow_dispatch` without enabling the `publish` input runs build and release-profile verification only
+
+3. **Manual workflow run publishes**
+   - Triggering `workflow_dispatch` with the `publish` input set to `true` runs the full publish job, bypassing the tag-version check
 
 Do not change this behavior unless explicitly requested.
 
